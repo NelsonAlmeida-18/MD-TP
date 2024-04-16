@@ -5,6 +5,7 @@ import os
 #RAG pipeline
 
 # Alter from the llama index to the https://docs.together.ai/docs/quickstart
+# Together documentation: https://github.com/togethercomputer/together-python
 from llama_index.llms.together import TogetherLLM
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
@@ -33,11 +34,24 @@ class RAG():
         self.llm = self.loadModel()
         self.embedingModel = self.loadEmbeddingModel()
         # self.dataIngestion()
+
+    
+    def partiesInQuery(self, query):
+        # Provavelmente adicionar um modelo para verificar a verossimilança entre nomes de partidos
+        partidos = [("chega","Chega"), ("ad","AD"), ("aliança democrática", "AD"), ("ps", "PS"), ("partido socialista", "PS"), ("bloco de esquerda", "BE"), ("cds","CDS"), ("iniciativa liberal", "IL")]
+        partidosAFiltrar = []
+        query = query.lower()
+        for i in partidos:
+            incorrect, correct = i
+            if incorrect in query:
+                partidosAFiltrar.append(correct)
+        return partidosAFiltrar
+
         
         
     def query(self, query):
         try:
-            options = {"partidos": []}
+            
             
             #query.split(" ")
             # TODO: identificar a presença de partidos e temáticas nas queries de forma a correr cada query à base de dados com base nesses partidos
@@ -47,12 +61,16 @@ class RAG():
             # Query na base de dados ao PS sobre a economia
             # Query na base de dados à AD sobre a economia
             # Passar tudo como contexto
+            filters = None
+            parties = self.partiesInQuery(query)
+            if parties:
+                filters = {"partido": {"$in" : parties}}
+
             # Finalizar isto e ver se está correto
-            partidos = ["Chega", "AD", "Aliança democrática", "Bloco de esquerda", "CDS", "CDU", "Iniciativa Liberal"]
 
             embededQuery = self.generateEmbeddings(query)
             # extraContext = self.DBController.runQuery(embededQuery, options)
-            extraContext = self.DBController.runQuery(embededQuery)
+            extraContext = self.DBController.runQuery(embededQuery, filters)
         
             minimumConfidence = 0.80
             contextAdd = ""
@@ -60,7 +78,7 @@ class RAG():
                 if confidenceLevel > minimumConfidence:
                     for context in extraContext[confidenceLevel]:
                         contextAdd += context + "\n"
-            if extraContext == "" or min(extraContext) < minimumConfidence:
+            if extraContext == [] and min(extraContext) < minimumConfidence:
                 response = "Não encontrei nada sobre isso."
             else:
                 # Detetar partido para inserir no contexto
@@ -228,9 +246,9 @@ class RAG():
     def loadModel(self):
         try: 
             togetherai_api_key = os.getenv("TogetherAI_API_KEY")
-            print("TogetherAI_API_KEY", togetherai_api_key)
+            # print("TogetherAI_API_KEY", togetherai_api_key)
             llm = TogetherLLM(
-                model = "mistralai/Mixtral-8x7B-Instruct-v0.1",
+                model="mistralai/Mixtral-8x7B-Instruct-v0.1",
                 api_key = togetherai_api_key
                 )
             print("Model loaded")
@@ -257,7 +275,8 @@ class RAG():
         try:
             ourAnswer = self.query(query)
         
-            llmAnswer = self.llm.complete(query)
+            # llmAnswer = self.llm.complete(query)
+            llmAnswer = "LLM answer"
             return (ourAnswer, str(llmAnswer))
 
         except Exception as e:
@@ -295,5 +314,3 @@ class RAG():
                 option = input("What is the query you want to make?")
             except Exception as e:
                 print("Error testing queries", e)
-
-RAG()

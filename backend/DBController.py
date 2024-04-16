@@ -2,7 +2,7 @@ from pinecone import Pinecone, PodSpec
 
 from llama_index.vector_stores.pinecone import PineconeVectorStore
 
-from llama_index.llms.together import TogetherLLM
+# from llama_index.llms.together import TogetherLLM
 
 from dotenv import load_dotenv
 import os
@@ -15,14 +15,20 @@ class DBController():
         #Lets verify if the database is up and running
         load_dotenv()
         self.db = self.initDatabase()
-        self.dropDB("MDRag")
-        self.createIndex("MDRag")
+        #self.dropDB("mdrag", True)
+        self.createIndex("mdrag")
     
 
-    def dropDB(self, index_name):
-        if index_name in self.db.list_indexes().names():
-            self.db.delete_index(index_name)
-            print("Index deleted")
+    def dropDB(self, index_name, all=False):
+        if all:
+            indexes = self.db.list_indexes().names()
+            for index in indexes:
+                self.db.delete_index(index)
+            print("All indexes deleted")
+        else:
+            if index_name in self.db.list_indexes().names():
+                self.db.delete_index(index_name)
+                print("Index deleted")
 
     def createIndex(self, index_name):
         try:
@@ -60,13 +66,15 @@ class DBController():
         except Exception as e:
             print("Error inserting data", e)
 
-    def runQuery(self, query):
+    def runQuery(self, query, filters={}):
         try:
             
+            print("Filters", filters)
             result = self.index.query(
                 vector=query,
                 top_k=5,
-                include_values=True
+                include_values=True,
+                filter=filters
             )
 
 
@@ -76,6 +84,8 @@ class DBController():
             docs = {}
             for result in results:
                 text = self.index.query(id=result["id"], top_k=1, include_metadata=True)
+
+                # TODO: Fix this to enhance the answer context
                 # # biggerWindow = ""
                 # try:
                 #     previous_text = self.index.query(id=result["id"]-1, top_k=1, include_metadata=True)["matches"][0]["metadata"]["text"]
@@ -99,21 +109,6 @@ class DBController():
 
         except Exception as e:
             print("Error querying", e)
-
-
-
-    def loadModel(self):
-        try:
-            togetherai_api_key = os.getenv("TogetherAI_API_KEY")
-            print("TogetherAI_API_KEY", togetherai_api_key)
-            llm = TogetherLLM(
-                model = "mistralai/Mixtral-8x7B-Instruct-v0.1",
-                api_key = togetherai_api_key
-                )
-            print("Model loaded")
-            return llm
-        except Exception as e:
-            print("Error loading model", e)
             return None
 
 
