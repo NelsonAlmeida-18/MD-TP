@@ -86,6 +86,7 @@ class DBController():
                 text = self.index.query(id=result["id"], top_k=1, include_metadata=True)
 
                 # TODO: Fix this to enhance the answer context
+                # TODO: Retrieve the party that has the information in order to enhance the answer
                 # # biggerWindow = ""
                 # try:
                 #     previous_text = self.index.query(id=result["id"]-1, top_k=1, include_metadata=True)["matches"][0]["metadata"]["text"]

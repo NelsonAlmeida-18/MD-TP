@@ -1,6 +1,7 @@
 #Utils
 from dotenv import load_dotenv
 import os
+import math
 
 #RAG pipeline
 
@@ -38,23 +39,29 @@ class RAG():
     
     def partiesInQuery(self, query):
         # Provavelmente adicionar um modelo para verificar a verossimilança entre nomes de partidos
-        partidos = [("chega","Chega"), ("ad","AD"), ("aliança democrática", "AD"), ("ps", "PS"), ("partido socialista", "PS"), ("bloco de esquerda", "BE"), ("cds","CDS"), ("iniciativa liberal", "IL")]
+        partidos = [("chega","Chega"), ("ad","AD"), ("aliança democrática", "AD"), ("ps", "PS"), ("partido socialista", "PS"), ("bloco de esquerda", "BE"), ("cds","CDS"), ("iniciativa liberal", "IL"), ("il", "IL")]
         partidosAFiltrar = []
         query = query.lower()
         for i in partidos:
             incorrect, correct = i
             if incorrect in query:
                 partidosAFiltrar.append(correct)
+
+        # Caso não tenha nenhum partido na query, procurar em todos
+        if not partidosAFiltrar:
+            uniquePartidos = [y for (_, y) in partidos]
+            # Lets get the unique parties
+            partidosAFiltrar = list(set(uniquePartidos))
+
         return partidosAFiltrar
 
         
         
     def query(self, query):
         try:
-            
-            
-            #query.split(" ")
             # TODO: identificar a presença de partidos e temáticas nas queries de forma a correr cada query à base de dados com base nesses partidos
+            # TODO: Fazer um mapa entre partidos e as possíveis siglas, também podemos adicionar alguma história para cada partido
+
             # Exemplo: Quais as medidas do ps e da ad para a economia?
             # Partidos: PS, AD
             # Temáticas: Economia
@@ -78,15 +85,22 @@ class RAG():
                 if confidenceLevel > minimumConfidence:
                     for context in extraContext[confidenceLevel]:
                         contextAdd += context + "\n"
-            if extraContext == [] and min(extraContext) < minimumConfidence:
+
+
+            # If the retrieved context is non existant or the confidence in the answer is too low then 
+            # Dont answer
+            # print("Extra context", extraContext)
+            if len(extraContext)==0:
                 response = "Não encontrei nada sobre isso."
             else:
-                # Detetar partido para inserir no contexto
+                # Prompt engineering to enhance the response
+                # Vamos usar one shot learning para melhorar a resposta
+                # https://ritikjain51.medium.com/llms-mastering-llm-responses-through-advanced-prompt-engineering-strategies-25c029d504b2
                 query = f"""
                             Com base única e exclusivamente no seguinte contexto do plano eleitoral para 2024:\n{contextAdd}
                             Dá me a resposta à seguinte questão em Português de Portugal!\n
                             Pergunta: {query}"""
-                
+                            
                 response = self.llm.complete(query)
             
             return str(response)
