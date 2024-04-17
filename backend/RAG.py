@@ -1,7 +1,7 @@
 #Utils
 from dotenv import load_dotenv
 import os
-import math
+import json
 
 #RAG pipeline
 
@@ -31,25 +31,33 @@ import spacy
 class RAG():
     def __init__(self):
         load_dotenv()
+        # TODO: Usar o ficheiro parties.json para fazer o mapeamento entre partidos e siglas e outras informações caso seja necessário
+        partiesFile = open("data/parties.json")
+        self.partiesFile = json.load(partiesFile)
+        # Load the models and the database controller
         self.DBController = DBController()
         self.llm = self.loadModel()
         self.embedingModel = self.loadEmbeddingModel()
+        # Ingest the data and insert into the database
         # self.dataIngestion()
 
     
     def partiesInQuery(self, query):
         # Provavelmente adicionar um modelo para verificar a verossimilança entre nomes de partidos
-        partidos = [("chega","Chega"), ("ad","AD"), ("aliança democrática", "AD"), ("ps", "PS"), ("partido socialista", "PS"), ("bloco de esquerda", "BE"), ("cds","CDS"), ("iniciativa liberal", "IL"), ("il", "IL")]
+
         partidosAFiltrar = []
         query = query.lower()
-        for i in partidos:
-            incorrect, correct = i
-            if incorrect in query:
-                partidosAFiltrar.append(correct)
+
+        for partido in self.partiesFile["partidos"]:
+            siglas = self.partiesFile["partidos"][partido]["siglas"]
+            for sigla in siglas:
+                if sigla.lower() in query:
+                    partidosAFiltrar.append(partido)
+                    break
 
         # Caso não tenha nenhum partido na query, procurar em todos
         if not partidosAFiltrar:
-            uniquePartidos = [y for (_, y) in partidos]
+            uniquePartidos = list(self.partiesFile["partidos"].keys())
             # Lets get the unique parties
             partidosAFiltrar = list(set(uniquePartidos))
 
@@ -81,10 +89,16 @@ class RAG():
         
             minimumConfidence = 0.80
             contextAdd = ""
+            sources = []
+            print(extraContext)
             for confidenceLevel in extraContext:
                 if confidenceLevel > minimumConfidence:
-                    for context in extraContext[confidenceLevel]:
+                    for (context, source) in extraContext[confidenceLevel]:
                         contextAdd += context + "\n"
+                        sources.append(source)
+
+            # return only the unique sources 
+            sources = list(set(sources))
 
 
             # If the retrieved context is non existant or the confidence in the answer is too low then 
@@ -93,17 +107,24 @@ class RAG():
             if len(extraContext)==0:
                 response = "Não encontrei nada sobre isso."
             else:
-                # Prompt engineering to enhance the response
+                # TODO:Prompt engineering to enhance the response
                 # Vamos usar one shot learning para melhorar a resposta
+                
                 # https://ritikjain51.medium.com/llms-mastering-llm-responses-through-advanced-prompt-engineering-strategies-25c029d504b2
+
+                # TODO:Fazer a query diferente para um único partido como filtro e múltiplos, o one shot learning fica diferente
                 query = f"""
-                            Com base única e exclusivamente no seguinte contexto do plano eleitoral para 2024:\n{contextAdd}
                             Dá me a resposta à seguinte questão em Português de Portugal!\n
+                            Com base única e exclusivamente no seguinte contexto do plano eleitoral para 2024:\n{contextAdd}
+
                             Pergunta: {query}"""
                             
                 response = self.llm.complete(query)
             
-            return str(response)
+            return {
+                    "response" : str(response),
+                    "source" : sources
+            }
                 
         
         except Exception as e:
@@ -204,7 +225,9 @@ class RAG():
             docs = []
             for party in os.listdir("data"):
                 for doc in os.listdir(f"data/{party}"):
-                
+                    if ".txt" not in doc:
+                        continue
+
                     docName = doc.split(".")[0]
                     docs.append(doc)
                     # document = loader.load(file_path=f"./data/{doc}")
@@ -235,7 +258,7 @@ class RAG():
                                 "partido": party,
                                 "assunto" : docName,
                                 "texto" : text_chunk,
-                                "source": "teste"
+                                "source": self.partiesFile["partidos"][party]["source"]
                             }
                         }
                         self.DBController.insert(payload)
@@ -287,10 +310,10 @@ class RAG():
 
     def compareSolution(self, query):
         try:
-            ourAnswer = self.query(query)
+            ourAnswer = self.query(query)["response"]
         
-            # llmAnswer = self.llm.complete(query)
-            llmAnswer = "LLM answer"
+            llmAnswer = self.llm.complete(query)
+        
             return (ourAnswer, str(llmAnswer))
 
         except Exception as e:

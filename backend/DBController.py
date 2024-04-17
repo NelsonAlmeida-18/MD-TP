@@ -98,13 +98,14 @@ class DBController():
 
                 # # Print result
                 score = result["score"]
-                text = text["matches"][0]["metadata"]["texto"]
+                answer = text["matches"][0]["metadata"]["texto"]
+                source = text["matches"][0]["metadata"]["source"]
                 print("Score:", score)
-                print("Query response:", text)
+                print("Query response:", answer)
                 if score not in docs:
-                    docs[score] = [text]
+                    docs[score] = [(answer, source)]
                 else:
-                    docs[score].append(text)
+                    docs[score].append((answer, source))
 
             return docs
 

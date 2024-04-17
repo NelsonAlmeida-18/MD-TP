@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, request
 from RAG import RAG
 
 app = Flask(__name__)
@@ -8,13 +8,17 @@ RAG = RAG()
 @app.route('/query', methods=['POST'])   
 def get_query():
     data = request.get_json()
-    print("Data", data)
+    
     query = data.get('query')
-    print(query)
-    response = RAG.query(query)
-    response = f"{response}"
 
-    return {'response': response}
+    response = RAG.query(query)
+    answer = response["response"]
+    sources = response["source"]
+
+    return {
+        'answer': answer, 
+        'sources': sources
+        }
 
 @app.route('/compare', methods=['POST'])
 def compare():
