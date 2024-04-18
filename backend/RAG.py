@@ -34,10 +34,11 @@ class RAG():
         # TODO: Usar o ficheiro parties.json para fazer o mapeamento entre partidos e siglas e outras informações caso seja necessário
         partiesFile = open("data/parties.json")
         self.partiesFile = json.load(partiesFile)
+        os.system("export TOKENIZERS_PARALLELISM=true")
         # Load the models and the database controller
-        self.DBController = DBController()
         self.llm = self.loadModel()
         self.embedingModel = self.loadEmbeddingModel()
+        self.DBController = DBController(self.modelContextWindow)
         # Ingest the data and insert into the database
         # self.dataIngestion()
 
@@ -64,7 +65,7 @@ class RAG():
         return partidosAFiltrar
 
         
-        
+    # TODO: Send the query size to the database controller when querying in order to get the context
     def query(self, query):
         try:
             # TODO: identificar a presença de partidos e temáticas nas queries de forma a correr cada query à base de dados com base nesses partidos
@@ -78,52 +79,70 @@ class RAG():
             # Passar tudo como contexto
             filters = None
             parties = self.partiesInQuery(query)
-            if parties:
-                filters = {"partido": {"$in" : parties}}
 
-            # Finalizar isto e ver se está correto
+            results = {}
 
-            embededQuery = self.generateEmbeddings(query)
-            # extraContext = self.DBController.runQuery(embededQuery, options)
-            extraContext = self.DBController.runQuery(embededQuery, filters)
-        
-            minimumConfidence = 0.80
-            contextAdd = ""
-            sources = []
-            print(extraContext)
-            for confidenceLevel in extraContext:
-                if confidenceLevel > minimumConfidence:
-                    for (context, source) in extraContext[confidenceLevel]:
-                        contextAdd += context + "\n"
-                        sources.append(source)
+            for party in parties:
+                
+                filters = {"partido": {"$eq" : party}}
 
-            # return only the unique sources 
-            sources = list(set(sources))
+                # Finalizar isto e ver se está correto
+
+                embededQuery = self.generateEmbeddings(query)
+                # extraContext = self.DBController.runQuery(embededQuery, options)
+                extraContext = self.DBController.runQuery(embededQuery, filters)
+            
+                minimumConfidence = 0.80
+                contextAdd = ""
+                sources = []
+                partiesContext = {}
+                # print(extraContext)
+                for confidenceLevel in extraContext:
+                    if confidenceLevel > minimumConfidence:
+                        for (context, source) in extraContext[confidenceLevel]:
+                            contextAdd += context + "\n"
+                            sources.append(source)
+
+                print("Confidence level", np.average(list(extraContext.keys())))
+
+                if len(extraContext)==0:
+                    contextAdd = f"Para o partido {party} não encontrei nada sobre isso."
+                # return only the unique sources 
+                sources = list(set(sources))
+                results[party] = (contextAdd, sources)
 
 
             # If the retrieved context is non existant or the confidence in the answer is too low then 
             # Dont answer
             # print("Extra context", extraContext)
-            if len(extraContext)==0:
-                response = "Não encontrei nada sobre isso."
-            else:
-                # TODO:Prompt engineering to enhance the response
-                # Vamos usar one shot learning para melhorar a resposta
-                
-                # https://ritikjain51.medium.com/llms-mastering-llm-responses-through-advanced-prompt-engineering-strategies-25c029d504b2
 
-                # TODO:Fazer a query diferente para um único partido como filtro e múltiplos, o one shot learning fica diferente
-                query = f"""
-                            Dá me a resposta à seguinte questão em Português de Portugal!\n
-                            Com base única e exclusivamente no seguinte contexto do plano eleitoral para 2024:\n{contextAdd}
 
-                            Pergunta: {query}"""
-                            
-                response = self.llm.complete(query)
+
+            # TODO:Prompt engineering to enhance the response
+            # Vamos usar one shot learning para melhorar a resposta
+            # https://ritikjain51.medium.com/llms-mastering-llm-responses-through-advanced-prompt-engineering-strategies-25c029d504b2
+
+            # Vamos usar https://www.promptingguide.ai/techniques/cot visto que elimina 
+
+            # TODO: Fazer a query diferente para um único partido como filtro e múltiplos, o one shot learning fica diferente
+            # TODO: Analisar o tamanho do contexto e ver se é necessário fazer a query de outra forma tipo sumarizar
+            # Ou uma para cada partido e depois juntar tudo
+            query = f"""
+                        És um assistente para responder a questões sobre o plano eleitoral para 2024.
+                        Dá me a resposta à seguinte questão em Português de Portugal!\n
+                        Caso não tenhas a certeza das respostas diz que não sabes.\n
+                        Com base única e exclusivamente no seguinte contexto do plano eleitoral para 2024.
+                        Contexto: {[f"O partido {party} diz o seguinte: {contextAdd}" for party, (contextAdd, _) in results.items()]}
+
+                        Pergunta: {query}
+                    """
+            
+            # print("Querying with query: ",query)
+            response = self.llm.complete(query)
             
             return {
                     "response" : str(response),
-                    "source" : sources
+                    "source" : [source for (_, source) in results.values()]
             }
                 
         
@@ -223,6 +242,7 @@ class RAG():
 
             #Lets load the data
             docs = []
+            i=0
             for party in os.listdir("data"):
                 for doc in os.listdir(f"data/{party}"):
                     if ".txt" not in doc:
@@ -240,28 +260,35 @@ class RAG():
                     # data = loader.load(file_path=f"./data/{party}/{doc}")
                     
                     # In the chunker limit the chunking token size to the number of tokens that the embeder can process
-
+                    cleanName = docName.replace(" ", "_").replace(":", "_").replace("?", "_").replace("!", "_").replace("(", "_").replace(")", "_").replace(",", "_").replace(".", "_")
                     print("Data chunked")
                     for idx in range(len(chunkedData)):
                         text_chunk = chunkedData[idx]
-                        id=f"{party}_{docName}_{idx}"
+                        
                     
 
                         nodeEmbeding = self.generateEmbeddings(text_chunk)
                         # print(f"Embeding size: {len(nodeEmbeding)}")
+
                         # TODO: Convém indexar o link do documento original para meter nos metadados
                         # TODO: Fix no id para ir buscar contexto adicional 
+
                         payload = {
-                            "id": str(uuid.uuid4()),
+                            "id": str(i),
                             "values": nodeEmbeding,
                             "metadata": {
+                                "chunk_id": idx,
+                                "document_id": f"{party}_{cleanName}",
                                 "partido": party,
                                 "assunto" : docName,
                                 "texto" : text_chunk,
                                 "source": self.partiesFile["partidos"][party]["source"]
                             }
                         }
+                        
                         self.DBController.insert(payload)
+
+                        i+=1
                 
                 print(f"Loaded {len(docs)} documents into {party}")
             print("Data loaded")
@@ -284,8 +311,11 @@ class RAG():
         try: 
             togetherai_api_key = os.getenv("TogetherAI_API_KEY")
             # print("TogetherAI_API_KEY", togetherai_api_key)
+            # Context window 32768
+            modelName = "mistralai/Mixtral-8x7B-Instruct-v0.1"
+            self.modelContextWindow = 32768
             llm = TogetherLLM(
-                model="mistralai/Mixtral-8x7B-Instruct-v0.1",
+                model=modelName,
                 api_key = togetherai_api_key
                 )
             print("Model loaded")
@@ -306,8 +336,8 @@ class RAG():
         except Exception as e:
             print("Error loading embedding model", e)
             return None
-        
-
+    
+    # within size to query the model
     def compareSolution(self, query):
         try:
             ourAnswer = self.query(query)["response"]

@@ -11,11 +11,13 @@ import time
 
 class DBController():
 
-    def __init__(self):
+    def __init__(self, modelContextWindow, embeddingSize=384):
         #Lets verify if the database is up and running
         load_dotenv()
         self.db = self.initDatabase()
-        #self.dropDB("mdrag", True)
+        self.modelContextWindow = modelContextWindow
+        self.embeddingSize = embeddingSize
+        # self.dropDB("mdrag", True)
         self.createIndex("mdrag")
     
 
@@ -30,6 +32,7 @@ class DBController():
                 self.db.delete_index(index_name)
                 print("Index deleted")
 
+
     def createIndex(self, index_name):
         try:
             # Verify if index is already created
@@ -38,7 +41,7 @@ class DBController():
                 # 384 is the default dimension for the embedding model
                 # We will use dotproduct since we want to tell how similar two vectors are
                 self.db.create_index(name=index_name,
-                                    dimension=384,
+                                    dimension=self.embeddingSize,
                                     metric = "cosine",
                                     spec=PodSpec(
                                         environment="gcp-starter"
@@ -57,7 +60,6 @@ class DBController():
         except Exception as e:
             print("Error creating index", e)
 
-
     def insert(self, data):
         try:
             
@@ -68,49 +70,83 @@ class DBController():
 
     def runQuery(self, query, filters={}):
         try:
-            
             print("Filters", filters)
-            result = self.index.query(
+            queryresult = self.index.query(
                 vector=query,
                 top_k=5,
                 include_values=True,
                 filter=filters
             )
 
-
-            results = result["matches"]
-            # print(results)
+            results = queryresult["matches"]
 
             docs = {}
             for result in results:
-                text = self.index.query(id=result["id"], top_k=1, include_metadata=True)
-
-                # TODO: Fix this to enhance the answer context
+            
+                originalId = result["id"]
+                
+                text = self.index.query(
+                    id=originalId, 
+                    top_k=1, 
+                    include_metadata=True
+                )
+                # print("Text", text)
+                # print("Original ID", originalId)
                 # TODO: Retrieve the party that has the information in order to enhance the answer
-                # # biggerWindow = ""
-                # try:
-                #     previous_text = self.index.query(id=result["id"]-1, top_k=1, include_metadata=True)["matches"][0]["metadata"]["text"]
-                #     next_text = self.index.query(id=result["id"]+1, top_k=1, include_metadata=True)["matches"][0]["metadata"]["text"]
-                #     text = previous_text + text["matches"][0]["metadata"]["text"] + next_text
-                # except:
-                #     text = text["matches"][0]["metadata"]["text"]
+            
+                try:
+            
+                    metadata = text["matches"][0]["metadata"]
+                    partido = metadata["partido"]
+                    originalDocumentId = metadata["document_id"]  
+                    # print("Original Document ID", originalDocumentId)
+                    previousId = str(int(originalId)-1)
+                    nextId = str(int(originalId)+1)
+                    # print("Previous ID", previousId)
+                    # print(type(previousId))
+
+                    previous_text = self.index.query(
+                        id = previousId,
+                        top_k=1, 
+                        include_metadata=True,
+                        filter={
+                            "document_id" : originalDocumentId
+                            }
+                        )
+                    
+                    next_text = self.index.query(
+                        id = nextId,
+                        top_k=1, 
+                        include_metadata=True,
+                        filter={
+                            "document_id" : originalDocumentId
+                            }
+                        )
+            
+                    # print("Extra context added")
+                    alteredText = previous_text + metadata["texto"] + next_text
+                    
+                except:
+                    alteredText = text["matches"][0]["metadata"]["texto"]
                 
 
                 # # Print result
                 score = result["score"]
-                answer = text["matches"][0]["metadata"]["texto"]
+                answer = alteredText
                 source = text["matches"][0]["metadata"]["source"]
-                print("Score:", score)
-                print("Query response:", answer)
+                # print("Score:", score)
+                # print("Query response:", answer)
+                
                 if score not in docs:
                     docs[score] = [(answer, source)]
+
                 else:
                     docs[score].append((answer, source))
 
             return docs
 
         except Exception as e:
-            print("Error querying", e)
+            print("Error querying the database", e)
             return None
 
 

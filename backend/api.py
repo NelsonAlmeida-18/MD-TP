@@ -36,4 +36,4 @@ def insert():
     return {'status': 'ok'}
 
 if __name__ == "__main__":
-    app.run(port=8000)
+    app.run(port=8000, debug=False)
