@@ -2,13 +2,27 @@
 from dotenv import load_dotenv
 import os
 import json
+import datetime
+from datasets import Dataset, load_dataset
+import pandas
+import time
 
 #RAG pipeline
 
 # Alter from the llama index to the https://docs.together.ai/docs/quickstart
 # Together documentation: https://github.com/togethercomputer/together-python
-from llama_index.llms.together import TogetherLLM
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+# from llama_index.llms.together import TogetherLLM
+# from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from langchain_together.embeddings  import TogetherEmbeddings
+
+from langchain_together import Together
+from ragas import evaluate
+from ragas.metrics import(
+    context_precision,
+    answer_relevancy,
+    answer_correctness
+)
+
 
 import uuid
 
@@ -38,11 +52,15 @@ class RAG():
         # Load the models and the database controller
         self.llm = self.loadModel()
         self.embedingModel = self.loadEmbeddingModel()
-        self.DBController = DBController(self.modelContextWindow)
+        self.embeddingSize = 768
+        self.DBController = DBController(self.modelContextWindow, self.embeddingSize)
+        # self.testEmbedings()
+        # self.testModel()
         # Ingest the data and insert into the database
         # self.dataIngestion()
 
-    
+        self.evaluate()
+
     def partiesInQuery(self, query):
         # Provavelmente adicionar um modelo para verificar a verossimilança entre nomes de partidos
 
@@ -63,10 +81,9 @@ class RAG():
             partidosAFiltrar = list(set(uniquePartidos))
 
         return partidosAFiltrar
-
         
     # TODO: Send the query size to the database controller when querying in order to get the context
-    def query(self, query):
+    def query(self, query, evaluate=False):
         try:
             # TODO: identificar a presença de partidos e temáticas nas queries de forma a correr cada query à base de dados com base nesses partidos
             # TODO: Fazer um mapa entre partidos e as possíveis siglas, também podemos adicionar alguma história para cada partido
@@ -93,14 +110,14 @@ class RAG():
                 extraContext = self.DBController.runQuery(embededQuery, filters)
             
                 minimumConfidence = 0.80
-                contextAdd = ""
+                contextAdd = []
                 sources = []
                 partiesContext = {}
                 # print(extraContext)
                 for confidenceLevel in extraContext:
                     if confidenceLevel > minimumConfidence:
                         for (context, source) in extraContext[confidenceLevel]:
-                            contextAdd += context + "\n"
+                            contextAdd.append(context)
                             sources.append(source)
 
                 print("Confidence level", np.average(list(extraContext.keys())))
@@ -109,14 +126,12 @@ class RAG():
                     contextAdd = f"Para o partido {party} não encontrei nada sobre isso."
                 # return only the unique sources 
                 sources = list(set(sources))
-                results[party] = (contextAdd, sources)
+                results[party] = ("\n".join(contextAdd), sources)
 
 
             # If the retrieved context is non existant or the confidence in the answer is too low then 
             # Dont answer
             # print("Extra context", extraContext)
-
-
 
             # TODO:Prompt engineering to enhance the response
             # Vamos usar one shot learning para melhorar a resposta
@@ -138,11 +153,18 @@ class RAG():
                     """
             
             # print("Querying with query: ",query)
-            response = self.llm.complete(query)
+            # response = self.llm.complete(query)
+            response = self.llm.invoke(query)
+            if not evaluate:
+                return {
+                        "response" : str(response),
+                        "source" : [source for (_, source) in results.values()]
+                }
             
-            return {
-                    "response" : str(response),
-                    "source" : [source for (_, source) in results.values()]
+            return{
+                "response": str(response),
+                "source": [source for (_, source) in results.values()],
+                "context" : contextAdd
             }
                 
         
@@ -244,6 +266,8 @@ class RAG():
             docs = []
             i=0
             for party in os.listdir("data"):
+                if not os.is_dir(f"data/{party}"):
+                    continue
                 for doc in os.listdir(f"data/{party}"):
                     if ".txt" not in doc:
                         continue
@@ -267,7 +291,8 @@ class RAG():
                         
                     
 
-                        nodeEmbeding = self.generateEmbeddings(text_chunk)
+                        nodeEmbeding = self.generateEmbeddings(text_chunk)[0]
+                        time.sleep(0.2)
                         # print(f"Embeding size: {len(nodeEmbeding)}")
 
                         # TODO: Convém indexar o link do documento original para meter nos metadados
@@ -299,11 +324,108 @@ class RAG():
 
     def generateEmbeddings(self, data):
         try:
-            data = self.embedingModel.get_text_embedding(data)
+            data = self.embedingModel.embed_documents([data])
+
             return data
         
         except Exception as e:
             print("Error generating embeddings", e)
+
+    
+    def evaluate(self, testset={}):
+        try:
+            # Lets load the jsonfile with the testset
+            testset = open("tests.json")
+            testset = json.load(testset)
+            testset = testset["tests"]
+
+            criticModel = Together(
+                model="mistralai/Mixtral-8x7B-Instruct-v0.1",
+                temperature=0.5,
+                together_api_key = os.getenv("TogetherAI_API_KEY"),
+                max_tokens = 1024
+                # Answer structure
+            )
+
+            metrics = [
+                # context_precision,
+                answer_relevancy,
+                answer_correctness
+            ]
+
+            evaluationResults = []
+
+
+            for test in testset:
+                name = test["name"]
+                question = test["question"]
+                groundTruth = test["groundTruth"]
+
+                answer = self.query(question, evaluate = True)
+                ourAnswer = answer["response"]
+                context = answer["context"]
+                
+                evaluation_template = f"""
+                    Classifica a resposta: "{ourAnswer}" para a pergunta "{question}" dado apenas o contexto fornecido pelo seguinte contexto: {"".join(context)}.
+                    O valor real da pergunta deverá ser "{groundTruth}".
+                    A classificação deve ser entre 1 (pontuação mais baixa) e 10 (pontuação mais alta), e deve conter uma explicação máxima de uma frase da classificação.
+                    A classificação deve ser baseada na qualidade da resposta considerando que a resposta foi APENAS baseada no contexto, e nada mais.
+                    Formata a resposta começando com a classificação, seguido de uma nova linha, seguido da explicação.
+                    [x]/10 Para receber uma pontuação completa, a resposta deve ser x"""
+
+                modelAnswer = criticModel.invoke(evaluation_template)
+
+                ourAnswer = ourAnswer.replace("\n", " ").replace("Resposta:", "")
+                
+                result = {
+                    "question": question,
+                    "answer": ourAnswer,
+                    "contexts": ["\n".join(context[0:5])],
+                    "ground_truth": groundTruth
+                }
+
+                # Lets create a json file to store the evaluation:
+                date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
+                filename = f"results_{date}.json"
+
+                with open(f"evaluation/{filename}", "w") as outfile:
+                    json.dump(result, outfile)
+
+                result = load_dataset("json", data_files=f"evaluation/{filename}")
+                
+                results = evaluate(
+                    result["train"],
+                    metrics=metrics,
+                    llm = self.llm,
+                    embeddings = self.embedingModel,
+                    raise_exceptions=False
+                )
+
+                results = results.to_pandas()
+                # Lets overwrite the json file now with the answers from both the critic llm and the RAGAS evaluation
+                # Probably alter the order for better visualization in the file
+                with open(f"evaluation/{filename}", "w") as outfile:
+                    payload = {
+                        "test_name": name,
+                        "question" : question,
+                        "criticAnswer": modelAnswer,
+                        "evaluation": {
+                            "answer_relevancy": float(results["answer_relevancy"]),
+                            "answer_correctness": float(results["answer_correctness"])
+                        },
+                        "groundTruth": groundTruth,
+                        "ourAnswer": ourAnswer,
+                        "context": context
+                    }
+                    json.dump(payload, outfile)
+
+                    evaluationResults.append(payload)
+
+            print("Evaluation done")
+            return {"results" : evaluationResults}
+
+        except Exception as e:
+            print("Error evaluating", e)
 
 
 
@@ -312,11 +434,14 @@ class RAG():
             togetherai_api_key = os.getenv("TogetherAI_API_KEY")
             # print("TogetherAI_API_KEY", togetherai_api_key)
             # Context window 32768
+            
             modelName = "mistralai/Mixtral-8x7B-Instruct-v0.1"
-            self.modelContextWindow = 32768
-            llm = TogetherLLM(
+            self.modelContextWindow = 32700
+            llm = Together(
                 model=modelName,
-                api_key = togetherai_api_key
+                temperature=0.5,
+                together_api_key = togetherai_api_key,
+                max_tokens = 1024
                 )
             print("Model loaded")
             return llm
@@ -330,7 +455,12 @@ class RAG():
     # OCUPA 4GB
     def loadEmbeddingModel(self):
         try: 
-            embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en")
+            togetherai_api_key = os.getenv("TogetherAI_API_KEY")
+
+            embed_model = TogetherEmbeddings(
+                model="togethercomputer/m2-bert-80M-8k-retrieval",
+                together_api_key = togetherai_api_key)
+            
             print("Embedding model loaded")
             return embed_model
         except Exception as e:
@@ -342,7 +472,8 @@ class RAG():
         try:
             ourAnswer = self.query(query)["response"]
         
-            llmAnswer = self.llm.complete(query)
+            # llmAnswer = self.llm.complete(query)
+            llmAnswer = self.llm.invoke(query)
         
             return (ourAnswer, str(llmAnswer))
 
@@ -356,7 +487,7 @@ class RAG():
     def testEmbedings(self):
         try:
             print("Testing Embeddings")
-            nodeEmbedding = self.embedingModel.get_text_embedding("Teste")
+            nodeEmbedding = self.embedingModel.embed_query("Teste")
             print(f"Embeding size: {len(nodeEmbedding)}")
         except Exception as e:
             print("Error testing embeddings", e)
@@ -364,7 +495,7 @@ class RAG():
     def testModel(self):
         try:
             print("Testing Model")
-            print(self.llm.complete("Hello, what is your name?"))
+            print(self.llm.invoke("Hello, what is your name?"))
         except Exception as e:
             print("Error testing model", e)    
 
@@ -375,7 +506,7 @@ class RAG():
         while(option!=""):
             try:
                 print("Testing Queries")
-                print(f"LLM answer: {self.llm.complete(option)}")
+                print(f"LLM answer: {self.llm.invoke(option)}")
 
                 print(f"Our answer: {self.DBController.runQuery(option)}")
                 option = input("What is the query you want to make?")

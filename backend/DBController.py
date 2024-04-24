@@ -2,7 +2,6 @@ from pinecone import Pinecone, PodSpec
 
 from llama_index.vector_stores.pinecone import PineconeVectorStore
 
-# from llama_index.llms.together import TogetherLLM
 
 from dotenv import load_dotenv
 import os

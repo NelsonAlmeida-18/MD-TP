@@ -19,6 +19,15 @@ def get_query():
         'answer': answer, 
         'sources': sources
         }
+# TODO: adicionar uma rota que permita ir buscar texto a um link providenciado pelo user
+# TODO: adicionar a verificação da presença de hiperligações na query, se existirem primeiro vamos buscar o texto que lá está para adicionarmos ao contexto
+# TODO: testar esta rota
+@app.route('/evaluate', methods=['POST'])
+def evaluate():
+    data = request.get_json()
+    query = data.get('query')
+    answer = RAG.evaluate(query)
+    return {'answer': answer}
 
 @app.route('/compare', methods=['POST'])
 def compare():

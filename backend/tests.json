@@ -1,0 +1,9 @@
+{
+    "tests": [
+        {
+            "name": "test1",
+            "question": "Quais as soluções apresentadas pela AD para a emigração de jovens?",
+            "groundTruth": "As soluções apresentadas pela AD para a emigração de jovens são: Criação de incentivos fiscais e do prémio salarial, Adoção do IRS Jovem (previsto no ponto 1.1 do documento) que procura reforçar rendimentos aos jovens até aos 35 anos, e reconhecer a enorme perda que a sua emigração massiva gera;Isenção de IMT e Imposto de Selo na compra na primeira casa pelos jovens; Garantia pública para viabilizar o financiamento bancário da totalidade do preço da aquisição da primeira casa por jovens;Expansão da Oferta de Habitação e o reforço do funcionamento do mercado de arrendamento como forma de garantia do 1.º direito e da trave basilar ao projeto de vida de cada um;Um mercado de trabalho onde os contratos de trabalho permitam maleabilidade para diferentes estilos de vida, prioridades, conciliação trabalho lazer e contínuo in- vestimento pessoal;Estado Social focado nos cidadãos, utilizando toda a capacidade instalada para garantir uma resposta efetiva aos jovens, aos agregados familiares que vão criar, e às gerações anteriores. Além da Saúde e da Educação, será garantido o acesso uni- versal e gratuito às creches, mobilizando os setores público, social e privado; Uma Economia a crescer mais e a distribuir melhor, através de apoios sociais que não se constituam uma armadilha de pobreza, e assim promovendo coesão e harmo- nia social que potencie a riqueza intrínseca do país, e o ofereça como um sítio onde os jovens desejam viver."
+        }
+    ]
+}
