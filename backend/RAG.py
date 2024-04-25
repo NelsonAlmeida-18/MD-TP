@@ -1,36 +1,27 @@
 #Utils
 from dotenv import load_dotenv
 import os
+import os.path
 import json
 import datetime
-from datasets import Dataset, load_dataset
-import pandas
+from datasets import load_dataset
 import time
 
 #RAG pipeline
 
 # Alter from the llama index to the https://docs.together.ai/docs/quickstart
 # Together documentation: https://github.com/togethercomputer/together-python
-# from llama_index.llms.together import TogetherLLM
-# from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-from langchain_together.embeddings  import TogetherEmbeddings
+from llama_index.llms.together import TogetherLLM
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
 from langchain_together import Together
 from ragas import evaluate
+from ragas.embeddings import HuggingfaceEmbeddings
 from ragas.metrics import(
-    context_precision,
     answer_relevancy,
-    answer_correctness
+    answer_correctness,
+    faithfulness
 )
-
-
-import uuid
-
-# RAG document ingestion pipeline
-from pathlib import Path
-from llama_index.readers.file import PyMuPDFReader
-# Text splitter to split the documents into chunks
-from llama_index.core.node_parser import SentenceSplitter
 
 #Database
 from DBController import DBController
@@ -40,7 +31,6 @@ import spacy
 
 
 #TODO Make run requirements and install spacy python3 -m spacy download en_core_web_sm
-#TODO export TOKENIZERS_PARALLELISM=true
 
 class RAG():
     def __init__(self):
@@ -48,18 +38,21 @@ class RAG():
         # TODO: Usar o ficheiro parties.json para fazer o mapeamento entre partidos e siglas e outras informações caso seja necessário
         partiesFile = open("data/parties.json")
         self.partiesFile = json.load(partiesFile)
-        os.system("export TOKENIZERS_PARALLELISM=true")
+        status = os.system("export TOKENIZERS_PARALLELISM=true")
+        print("Status", status)
         # Load the models and the database controller
         self.llm = self.loadModel()
         self.embedingModel = self.loadEmbeddingModel()
-        self.embeddingSize = 768
-        self.DBController = DBController(self.modelContextWindow, self.embeddingSize)
+        self.DBController = DBController(self.modelContextWindow)
+        
         # self.testEmbedings()
         # self.testModel()
+
         # Ingest the data and insert into the database
         # self.dataIngestion()
 
-        self.evaluate()
+        # For pipeline evaluation
+        # self.evaluate()
 
     def partiesInQuery(self, query):
         # Provavelmente adicionar um modelo para verificar a verossimilança entre nomes de partidos
@@ -103,16 +96,14 @@ class RAG():
                 
                 filters = {"partido": {"$eq" : party}}
 
-                # Finalizar isto e ver se está correto
-
                 embededQuery = self.generateEmbeddings(query)
-                # extraContext = self.DBController.runQuery(embededQuery, options)
+                
                 extraContext = self.DBController.runQuery(embededQuery, filters)
             
                 minimumConfidence = 0.80
                 contextAdd = []
                 sources = []
-                partiesContext = {}
+                
                 # print(extraContext)
                 for confidenceLevel in extraContext:
                     if confidenceLevel > minimumConfidence:
@@ -148,13 +139,14 @@ class RAG():
                         Caso não tenhas a certeza das respostas diz que não sabes.\n
                         Com base única e exclusivamente no seguinte contexto do plano eleitoral para 2024.
                         Contexto: {[f"O partido {party} diz o seguinte: {contextAdd}" for party, (contextAdd, _) in results.items()]}
-
+                        
                         Pergunta: {query}
                     """
             
             # print("Querying with query: ",query)
             # response = self.llm.complete(query)
-            response = self.llm.invoke(query)
+            response = self.llm.complete(query)
+
             if not evaluate:
                 return {
                         "response" : str(response),
@@ -266,8 +258,9 @@ class RAG():
             docs = []
             i=0
             for party in os.listdir("data"):
-                if not os.is_dir(f"data/{party}"):
+                if not os.path.isdir(f"data/{party}"):
                     continue
+
                 for doc in os.listdir(f"data/{party}"):
                     if ".txt" not in doc:
                         continue
@@ -281,7 +274,6 @@ class RAG():
                     data = "\n".join(data)
 
                     chunkedData = self.chunkFile(file=data, tokensPerChunk=300, overlap=50)
-                    # data = loader.load(file_path=f"./data/{party}/{doc}")
                     
                     # In the chunker limit the chunking token size to the number of tokens that the embeder can process
                     cleanName = docName.replace(" ", "_").replace(":", "_").replace("?", "_").replace("!", "_").replace("(", "_").replace(")", "_").replace(",", "_").replace(".", "_")
@@ -291,7 +283,7 @@ class RAG():
                         
                     
 
-                        nodeEmbeding = self.generateEmbeddings(text_chunk)[0]
+                        nodeEmbeding = self.generateEmbeddings(text_chunk)
                         time.sleep(0.2)
                         # print(f"Embeding size: {len(nodeEmbeding)}")
 
@@ -312,7 +304,6 @@ class RAG():
                         }
                         
                         self.DBController.insert(payload)
-
                         i+=1
                 
                 print(f"Loaded {len(docs)} documents into {party}")
@@ -324,7 +315,7 @@ class RAG():
 
     def generateEmbeddings(self, data):
         try:
-            data = self.embedingModel.embed_documents([data])
+            data = self.embedingModel.get_text_embedding(data)
 
             return data
         
@@ -333,24 +324,33 @@ class RAG():
 
     
     def evaluate(self, testset={}):
+        print("Evaluating the pipeline")
         try:
             # Lets load the jsonfile with the testset
             testset = open("tests.json")
             testset = json.load(testset)
             testset = testset["tests"]
 
+            results = []
+
             criticModel = Together(
                 model="mistralai/Mixtral-8x7B-Instruct-v0.1",
-                temperature=0.5,
+                temperature=0.1,
                 together_api_key = os.getenv("TogetherAI_API_KEY"),
-                max_tokens = 1024
+                max_tokens = 512,
                 # Answer structure
             )
+
+            embedingModel = HuggingfaceEmbeddings(
+                model_name = "BAAI/bge-small-en"
+            )
+
 
             metrics = [
                 # context_precision,
                 answer_relevancy,
-                answer_correctness
+                answer_correctness,
+                faithfulness
             ]
 
             evaluationResults = []
@@ -369,11 +369,14 @@ class RAG():
                     Classifica a resposta: "{ourAnswer}" para a pergunta "{question}" dado apenas o contexto fornecido pelo seguinte contexto: {"".join(context)}.
                     O valor real da pergunta deverá ser "{groundTruth}".
                     A classificação deve ser entre 1 (pontuação mais baixa) e 10 (pontuação mais alta), e deve conter uma explicação máxima de uma frase da classificação.
-                    A classificação deve ser baseada na qualidade da resposta considerando que a resposta foi APENAS baseada no contexto, e nada mais.
-                    Formata a resposta começando com a classificação, seguido de uma nova linha, seguido da explicação.
-                    [x]/10 Para receber uma pontuação completa, a resposta deve ser x"""
+                    A classificação deve ser baseada na relevância da resposta e o quão correta ela está considerando que a resposta foi APENAS baseada no contexto, e nada mais.
+                    A resposta deve ter apenas a classificação do tipo:
+                    Relevancia: x/10
+                    Correção: x/10
+                    """
 
                 modelAnswer = criticModel.invoke(evaluation_template)
+                
 
                 ourAnswer = ourAnswer.replace("\n", " ").replace("Resposta:", "")
                 
@@ -396,22 +399,36 @@ class RAG():
                 results = evaluate(
                     result["train"],
                     metrics=metrics,
-                    llm = self.llm,
-                    embeddings = self.embedingModel,
+                    llm = criticModel,
+                    embeddings = embedingModel,
                     raise_exceptions=False
                 )
-
+                
                 results = results.to_pandas()
+
                 # Lets overwrite the json file now with the answers from both the critic llm and the RAGAS evaluation
                 # Probably alter the order for better visualization in the file
+
+                # TODO: verify if any of the results are Nan, if so replace by 0 
+                answer_relevancy_result = results["answer_relevancy"].iloc[0]
+                if np.isnan(answer_relevancy_result):
+                    answer_relevancy_result = 0
+                answer_correctness_result = results["answer_correctness"].iloc[0]
+                if np.isnan(answer_correctness_result):
+                    answer_correctness_result = 0
+                answer_faithfulness_result = results["faithfulness"].iloc[0]
+                if np.isnan(answer_faithfulness_result):
+                    answer_faithfulness_result = 0
+
                 with open(f"evaluation/{filename}", "w") as outfile:
                     payload = {
                         "test_name": name,
                         "question" : question,
                         "criticAnswer": modelAnswer,
                         "evaluation": {
-                            "answer_relevancy": float(results["answer_relevancy"]),
-                            "answer_correctness": float(results["answer_correctness"])
+                            "answer_relevancy": float(answer_relevancy_result),
+                            "answer_correctness": float(answer_correctness_result),
+                            "answer_faithfulness": float(answer_faithfulness_result)
                         },
                         "groundTruth": groundTruth,
                         "ourAnswer": ourAnswer,
@@ -435,14 +452,18 @@ class RAG():
             # print("TogetherAI_API_KEY", togetherai_api_key)
             # Context window 32768
             
-            modelName = "mistralai/Mixtral-8x7B-Instruct-v0.1"
+            # modelName = "mistralai/Mixtral-8x7B-Instruct-v0.1"
             self.modelContextWindow = 32700
-            llm = Together(
-                model=modelName,
-                temperature=0.5,
-                together_api_key = togetherai_api_key,
-                max_tokens = 1024
-                )
+            # llm = Together(
+            #     model=modelName,
+            #     temperature=0.5,
+            #     together_api_key = togetherai_api_key,
+            #     max_tokens = 1024
+            #     )
+            llm = TogetherLLM(
+                model= "mistralai/Mixtral-8x7B-Instruct-v0.1",
+                api_key = togetherai_api_key
+            )
             print("Model loaded")
             return llm
         except Exception as e:
@@ -455,12 +476,12 @@ class RAG():
     # OCUPA 4GB
     def loadEmbeddingModel(self):
         try: 
-            togetherai_api_key = os.getenv("TogetherAI_API_KEY")
+            # togetherai_api_key = os.getenv("TogetherAI_API_KEY")
 
-            embed_model = TogetherEmbeddings(
-                model="togethercomputer/m2-bert-80M-8k-retrieval",
-                together_api_key = togetherai_api_key)
-            
+            embed_model = HuggingFaceEmbedding(
+                model_name = "BAAI/bge-small-en"
+            )
+
             print("Embedding model loaded")
             return embed_model
         except Exception as e:
@@ -472,8 +493,7 @@ class RAG():
         try:
             ourAnswer = self.query(query)["response"]
         
-            # llmAnswer = self.llm.complete(query)
-            llmAnswer = self.llm.invoke(query)
+            llmAnswer = self.llm.complete(query)
         
             return (ourAnswer, str(llmAnswer))
 
@@ -487,7 +507,7 @@ class RAG():
     def testEmbedings(self):
         try:
             print("Testing Embeddings")
-            nodeEmbedding = self.embedingModel.embed_query("Teste")
+            nodeEmbedding = self.embedingModel.get_text_embedding("Teste")
             print(f"Embeding size: {len(nodeEmbedding)}")
         except Exception as e:
             print("Error testing embeddings", e)
@@ -495,7 +515,7 @@ class RAG():
     def testModel(self):
         try:
             print("Testing Model")
-            print(self.llm.invoke("Hello, what is your name?"))
+            print(self.llm.complete("Hello, what is your name?"))
         except Exception as e:
             print("Error testing model", e)    
 

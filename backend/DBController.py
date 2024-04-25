@@ -6,6 +6,8 @@ from llama_index.vector_stores.pinecone import PineconeVectorStore
 from dotenv import load_dotenv
 import os
 import time
+import cohere
+import datetime
 
 
 class DBController():
@@ -16,6 +18,7 @@ class DBController():
         self.db = self.initDatabase()
         self.modelContextWindow = modelContextWindow
         self.embeddingSize = embeddingSize
+        self.reranker = self.loadReranker()
         # self.dropDB("mdrag", True)
         self.createIndex("mdrag")
     
@@ -67,18 +70,106 @@ class DBController():
         except Exception as e:
             print("Error inserting data", e)
 
+
+    def loadReranker(self):
+        try:
+            coherekey = os.getenv("cohereapikey")
+            model = cohere.Client(api_key=coherekey)
+            return model
+
+        except Exception as e:
+            print("Error loading the reranker model", e)
+            return None
+        
+
+    def compareDocs(self, rerankedDocs, docs, fileName=None):
+        try:
+            if not fileName:
+                for key in docs:
+                    if key in rerankedDocs:
+                        print("Score:", key)
+                        print("Original")
+                        for doc in docs[key]:
+                            print(doc[0])
+                        print("Reranked")
+                        for doc in rerankedDocs[key]:
+                            print(doc[0])
+                        print("\n")
+                    else:
+                        print("Score:", key)
+                        print("Original")
+                        for doc in docs[key]:
+                            print(doc[0])
+                        print("\n")
+
+            else:
+                # Lets open the file to save
+                with open(fileName, "w") as file:
+                    for key in docs:
+                        if key in rerankedDocs:
+                            file.write("Score: " + str(key) + "\n")
+                            file.write("Original" + "\n")
+                            for doc in docs[key]:
+                                file.write(doc[0] + "\n")
+                            file.write("Reranked" + "\n")
+                            for doc in rerankedDocs[key]:
+                                file.write(doc[0] + "\n")
+                            file.write("\n")
+                        else:
+                            file.write("Score: " + str(key) + "\n")
+                            file.write("Original" + "\n")
+                            for doc in docs[key]:
+                                file.write(doc[0] + "\n")
+                            file.write("\n")
+
+        except Exception as e:
+            print("Error comparing documents", e)
+
+
     def runQuery(self, query, filters={}):
         try:
+
+            # Reranked docs
             print("Filters", filters)
+            rerankedDocs = {}
+
             queryresult = self.index.query(
                 vector=query,
-                top_k=5,
+                top_k=25,
                 include_values=True,
+                include_metadata=True,
                 filter=filters
             )
 
             results = queryresult["matches"]
 
+
+            # A query devia estar em plain text e aqui é que damos embed
+            # Quero guardar os ids para depois ir buscar as sources
+            reranked_docs = self.reranker.rerank(query="Quais as medidas e as metas da alianca democratica para a educação?", 
+                                                 documents = [result["metadata"]["texto"] for result in results], 
+                                                 top_n=5,
+                                                 model="rerank-english-v2.0")
+            
+            
+            for doc in reranked_docs:
+                if "results" in doc[0]:
+                    for i in doc[1]:                
+                        index = i.index
+                        score = results[index]["score"]
+                        answer = results[index]["metadata"]["texto"]
+                        source = results[index]["metadata"]["source"]
+                        if score not in rerankedDocs:
+                            rerankedDocs[score] = [(answer, source)]
+                        else:
+                            rerankedDocs[score].append((answer, source))
+
+
+                    # for i in doc["results"]:
+                    #     print(i)
+
+                    
+            # Original version
             docs = {}
             for result in results:
             
@@ -141,8 +232,10 @@ class DBController():
 
                 else:
                     docs[score].append((answer, source))
-
-            return docs
+            
+            date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            self.compareDocs(rerankedDocs, docs, f"./output_{date}.txt")  
+            return rerankedDocs
 
         except Exception as e:
             print("Error querying the database", e)
