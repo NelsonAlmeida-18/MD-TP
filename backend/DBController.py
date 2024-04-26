@@ -126,7 +126,7 @@ class DBController():
             print("Error comparing documents", e)
 
 
-    def runQuery(self, query, filters={}):
+    def runQuery(self, query, filters={}, queryText=None):
         try:
 
             # Reranked docs
@@ -146,10 +146,10 @@ class DBController():
 
             # A query devia estar em plain text e aqui é que damos embed
             # Quero guardar os ids para depois ir buscar as sources
-            reranked_docs = self.reranker.rerank(query="Quais as medidas e as metas da alianca democratica para a educação?", 
+            reranked_docs = self.reranker.rerank(query=queryText, 
                                                  documents = [result["metadata"]["texto"] for result in results], 
                                                  top_n=5,
-                                                 model="rerank-english-v2.0")
+                                                 model="rerank-multilingual-v2.0")
             
             
             for doc in reranked_docs:
@@ -233,8 +233,9 @@ class DBController():
                 else:
                     docs[score].append((answer, source))
             
-            date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            self.compareDocs(rerankedDocs, docs, f"./output_{date}.txt")  
+            # date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            # self.compareDocs(rerankedDocs, docs, f"./output_{date}.txt")  
+            
             return rerankedDocs
 
         except Exception as e:

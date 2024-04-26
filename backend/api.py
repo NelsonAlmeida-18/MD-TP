@@ -29,6 +29,8 @@ def evaluate():
     answer = RAG.evaluate(query)
     return {'answer': answer}
 
+
+
 @app.route('/compare', methods=['POST'])
 def compare():
     data = request.get_json()
@@ -36,6 +38,8 @@ def compare():
     ourAnswer, llmAnswer  = RAG.compareSolution(query)
 
     return {'Resposta do nosso modelo': ourAnswer, 'Resposta do LLM': llmAnswer}
+
+
 
 @app.route('/insert', methods=['POST'])
 def insert():

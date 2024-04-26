@@ -15,6 +15,9 @@ from llama_index.llms.together import TogetherLLM
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
 from langchain_together import Together
+
+from deepeval.metrics import GEval
+
 from ragas import evaluate
 from ragas.embeddings import HuggingfaceEmbeddings
 from ragas.metrics import(
@@ -30,7 +33,30 @@ import numpy as np
 import spacy
 
 
-#TODO Make run requirements and install spacy python3 -m spacy download en_core_web_sm
+class TogetherModel():
+
+    def __init__(self):
+        self.model = TogetherLLM(
+            model="mistralai/Mixtral-8x7B-Instruct-v0.1",
+            api_key = os.getenv("TogetherAI_API_KEY")
+        )
+    
+    def load_model(self):
+        return self.model
+
+    def generate(self, prompt):
+        answer = self.model.complete(prompt)
+        return answer
+    
+    # Todo verify this method
+    async def a_generate(self, prompt):
+        answer = await self.model.complete(prompt)
+        return answer
+    
+    def get_model_name(self):
+        return "MistraLAI Mixtral 8x7B Instruct v0.1"
+
+#TODO Make run requirements and install spacy python3 -m spacy download pt_core_news_sm
 
 class RAG():
     def __init__(self):
@@ -98,7 +124,7 @@ class RAG():
 
                 embededQuery = self.generateEmbeddings(query)
                 
-                extraContext = self.DBController.runQuery(embededQuery, filters)
+                extraContext = self.DBController.runQuery(embededQuery, filters, query)
             
                 minimumConfidence = 0.80
                 contextAdd = []
@@ -147,6 +173,21 @@ class RAG():
             # response = self.llm.complete(query)
             response = self.llm.complete(query)
 
+            # Lets log the query and the response to a file
+            date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
+            filename = f"query_{date}.json"
+        
+            with open(f"logs/{filename}", "w") as outfile:
+                json.dump(
+                    {"query": query, 
+                     "response": str(response), 
+                     "context": [
+                         {
+                            f"{party}" : f"{contextAdd}" for party, (contextAdd, _) in results.items()
+                        }
+                     ]}, 
+                     outfile)
+
             if not evaluate:
                 return {
                         "response" : str(response),
@@ -174,7 +215,6 @@ class RAG():
             print("Error ingesting data", e)
 
 
-
     def process(self, text):
                 doc = self.nlp(text)
                 sents = list(doc.sents)
@@ -191,14 +231,12 @@ class RAG():
         
         return clusters
 
-
-
     # TODO: Edit this in order to account for overlapping
     def chunkFile(self, file, tokensPerChunk, overlap):
         try:
                         
             # Load the Spacy model
-            self.nlp = spacy.load('en_core_web_sm')
+            self.nlp = spacy.load('pt_core_news_lg')
 
             # Initialize the clusters lengths list and final texts list
             clusters_lens = []
@@ -220,7 +258,7 @@ class RAG():
                     continue
                 
                 # Check if the cluster is too long
-                elif cluster_len > 3000:
+                elif cluster_len > tokensPerChunk:
                     threshold = 0.6
                     sents_div, vecs_div = self.process(cluster_txt)
                     reclusters = self.cluster_text(sents_div, vecs_div, threshold)
@@ -229,7 +267,7 @@ class RAG():
                         div_txt = ' '.join([sents_div[i].text for i in subcluster])
                         div_len = len(div_txt)
                         
-                        if div_len < 60 or div_len > 3000:
+                        if div_len < 60 or div_len > tokensPerChunk:
                             continue
                         
                         clusters_lens.append(div_len)
@@ -273,7 +311,7 @@ class RAG():
                     data = data.readlines()
                     data = "\n".join(data)
 
-                    chunkedData = self.chunkFile(file=data, tokensPerChunk=300, overlap=50)
+                    chunkedData = self.chunkFile(file=data, tokensPerChunk=2000, overlap=50)
                     
                     # In the chunker limit the chunking token size to the number of tokens that the embeder can process
                     cleanName = docName.replace(" ", "_").replace(":", "_").replace("?", "_").replace("!", "_").replace("(", "_").replace(")", "_").replace(",", "_").replace(".", "_")
@@ -327,9 +365,10 @@ class RAG():
         print("Evaluating the pipeline")
         try:
             # Lets load the jsonfile with the testset
-            testset = open("tests.json")
-            testset = json.load(testset)
-            testset = testset["tests"]
+            if testset == {}:
+                testset = open("tests.json")
+                testset = json.load(testset)
+                testset = testset["tests"]
 
             results = []
 
@@ -354,6 +393,8 @@ class RAG():
             ]
 
             evaluationResults = []
+
+            
 
 
             for test in testset:
