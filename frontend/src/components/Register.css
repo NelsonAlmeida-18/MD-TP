@@ -1,0 +1,18 @@
+.register-container label {
+    margin-bottom: 10px;
+}
+
+.register-container input[type="text"], .register-container input[type="password"], .register-container input[type="email"] {
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+.register-container input[type="submit"] {
+    padding: 10px;
+    border-radius: 5px;
+    border: none;
+    background-color: #007BFF;
+    color: white;
+    cursor: pointer;
+}

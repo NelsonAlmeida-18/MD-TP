@@ -1,0 +1,60 @@
+{
+    "henrique": {
+        "1": [
+            {
+                "question": "Olá, tudo bem?",
+                "type": "sent"
+            },
+            {
+                "answer": "Tudo ótimo, e você?",
+                "source": "fonte",
+                "type": "received"
+            },
+            {
+                "question": "Olá, tudo bem?",
+                "type": "sent"
+            },
+            {
+                "answer": "Tudo ótimo, e você?",
+                "source": "fonte",
+                "type": "received"
+            },
+            {
+                "question": "Olá, tudo bem?",
+                "type": "sent"
+            },
+            {
+                "answer": "Tudo ótimo, e você?",
+                "source": "fonte",
+                "type": "received"
+            },
+            {
+                "question": "Olá, tudo bem?",
+                "type": "sent"
+            },
+            {
+                "answer": "Tudo ótimo, e você?",
+                "source": "fonte",
+                "type": "received"
+            },
+            {
+                "question": "Olá, tudo bem?",
+                "type": "sent"
+            },
+            {
+                "answer": "Tudo ótimo, e você?",
+                "source": "fonte",
+                "type": "received"
+            }
+        ]
+    },
+    "henriques": {
+        "7455014e-e3ff-41c9-a712-63c6ccf5b0a9": []
+    },
+    "henriquess": {
+        "67592803-2f8b-4ae9-b8ef-2faaf74f174d": []
+    },
+    "henriquessas": {
+        "ab88db04-173f-4932-8ce7-53247116c588": []
+    }
+}
