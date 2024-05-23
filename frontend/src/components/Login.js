@@ -23,7 +23,7 @@ function Login() {
             .then(console.log(body))
             .then(response => response.json())
             .then(data => {
-                if (data) {
+                if (data) { 
                     localStorage.setItem('username', username);
                     navigate(data.redirect);
                 }
