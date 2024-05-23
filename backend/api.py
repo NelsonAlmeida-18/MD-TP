@@ -1,20 +1,21 @@
 import json
 
 from flask import Flask, request, jsonify, redirect
-#from RAG import RAG
+from RAG import RAG
 from flask_cors import CORS
 from uuid import uuid4
 app = Flask(__name__)
 CORS(app)
-#RAG = RAG()
+
+RAG = RAG()
 
 chats = {}
 users = {}
 
-with open('backend/data_users/chats.json', 'r', encoding='utf-8') as f:
+with open('./data_users/chats.json', 'r', encoding='utf-8') as f:
     chats = json.load(f)
 
-with open('backend/data_users/users.json', 'r', encoding='utf-8') as f:
+with open('./data_users/users.json', 'r', encoding='utf-8') as f:
     users = json.load(f)
 
 def dump():
@@ -106,7 +107,8 @@ def get_query():
 
     return {
         'answer': answer, 
-        'sources': sources
+        'sources': sources,
+        'type':'received'
         }
 # TODO: adicionar uma rota que permita ir buscar texto a um link providenciado pelo user
 # TODO: adicionar a verificação da presença de hiperligações na query, se existirem primeiro vamos buscar o texto que lá está para adicionarmos ao contexto
@@ -139,4 +141,4 @@ def insert():
 
 
 if __name__ == "__main__":
-    app.run(port=8000, debug=True)
+    app.run(port=8000, debug=False)

@@ -16,8 +16,6 @@ from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
 from langchain_together import Together
 
-from deepeval.metrics import GEval
-
 from ragas import evaluate
 from ragas.embeddings import HuggingfaceEmbeddings
 from ragas.metrics import(

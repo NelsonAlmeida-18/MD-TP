@@ -27,17 +27,22 @@ function Chat() {
       window.location.href = '/login';
       return;
     }
-    let new_question = { question: inputValue, type: 'sent' };
+    const new_question = { question: inputValue, type: 'sent' };
     setData([...data, new_question]);
     fetch('http://localhost:8000/query', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ text: inputValue }),
+      body: JSON.stringify({ query: inputValue }),
     })
     .then(response => response.json())
-    .then(data => setData(data));
+    .then(answer => {
+      setData([...data, new_question, answer]);
+      setInputValue('');
+    }
+    );
+  
   };
 
   const handleKeyDown = (event) => {
@@ -49,12 +54,12 @@ function Chat() {
   const messagesEndRef = useRef(null);
 
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }
+  // const scrollToBottom = () => {
+  //   messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  // }
 
-  useEffect(scrollToBottom, [data]);
-  console.log(chats);
+  // useEffect(scrollToBottom, [data]);
+  // console.log(chats);
   return (
   <div>
     <div className="header">
