@@ -1,38 +1,68 @@
-.App {
-  text-align: center;
+.mainDiv {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100vh;
+  width: 100vw;
+  padding: 0 2rem;
+  background: rgb(218,41,28);
+  background: -moz-linear-gradient(357deg, rgba(218,41,28,1) 0%, rgba(4,106,56,1) 100%);
+  background: -webkit-linear-gradient(357deg, rgba(218,41,28,1) 0%, rgba(4,106,56,1) 100%);
+  background: linear-gradient(357deg, rgba(218,41,28,1) 0%, rgba(4,106,56,1) 100%);
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#da291c",endColorstr="#046a38",GradientType=1);
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+.leftMember {
   display: flex;
   flex-direction: column;
-  align-items: center;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  align-items: flex-start;
+  width: 50%;
 }
 
-.App-link {
-  color: #61dafb;
+.Logo {
+  font-size: 4rem;
+  color: #fff;
+  margin-bottom: 1rem;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
+.leftMember p {
+  font-size: 1.2rem;
+  color: #fff;
+  margin-bottom: 2rem;
+  max-width: 70%;
+}
+
+.launchapp {
+  background-color: rgba(4,116,56,1);
+  color: #fff;
+  border-radius: 20px;
+  border: 2px solid #fff;
+  padding: 1rem 2rem;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.launchapp:hover {
+  background-color: #00b09b;
+  color: #fff;
+}
+
+.rightMember {
+  width: 30%;
+  max-width: 300px;
+  animation: jump 2s ease-in-out infinite;
+}
+
+@keyframes jump {
+  0% {
+      transform: translateY(0);
   }
-  to {
-    transform: rotate(360deg);
+  50% {
+      transform: translateY(-10px);
+  }
+  100% {
+      transform: translateY(0);
   }
 }

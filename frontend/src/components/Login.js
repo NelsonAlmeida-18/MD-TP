@@ -20,6 +20,7 @@ function Login() {
             },
             body: JSON.stringify({ "id": username, "password": password }),
         })
+            .then(console.log(body))
             .then(response => response.json())
             .then(data => {
                 if (data) {

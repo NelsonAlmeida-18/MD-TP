@@ -19,9 +19,9 @@ with open('./data_users/users.json', 'r', encoding='utf-8') as f:
     users = json.load(f)
 
 def dump():
-    with open('backend/data_users/users.json', 'w', encoding='utf-8') as f:
+    with open('./data_users/users.json', 'w', encoding='utf-8') as f:
         json.dump(users, f, ensure_ascii=False, indent=4)
-    with open('backend/data_users/chats.json', 'w', encoding='utf-8') as f:
+    with open('./data_users/chats.json', 'w', encoding='utf-8') as f:
         json.dump(chats, f, ensure_ascii=False, indent=4)
 
 @app.route('/chat/<string:id>/<string:chat_id>', methods=['GET'])
