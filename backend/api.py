@@ -1,12 +1,12 @@
 import json
 
 from flask import Flask, request, jsonify, redirect
-from RAG import RAG
+#from RAG import RAG
 from flask_cors import CORS
 from uuid import uuid4
 app = Flask(__name__)
 CORS(app)
-RAG = RAG()
+#RAG = RAG()
 
 chats = {}
 users = {}

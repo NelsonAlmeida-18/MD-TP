@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import './Chat.css';
 
 function Chat() {
@@ -8,8 +8,11 @@ function Chat() {
   const [data, setData] = useState([]);
   const [chats, setChats] = useState([]);
   const [inputValue, setInputValue] = useState("");
-
+  const navigate = useNavigate();
   useEffect(() => {
+    if (!user_id) {
+      window.location.href = '/login';
+    }
     fetch(`http://localhost:8000/chat/${user_id}/${chat_id}`)
       .then(response => response.json())
       .then(data => setData(data[0].data));
@@ -20,6 +23,10 @@ function Chat() {
   }, [user_id, chat_id]);
 
   const handleSend = () => {
+    if (!user_id) {
+      window.location.href = '/login';
+      return;
+    }
     let new_question = { question: inputValue, type: 'sent' };
     setData([...data, new_question]);
     fetch('http://localhost:8000/query', {
@@ -47,15 +54,22 @@ function Chat() {
   }
 
   useEffect(scrollToBottom, [data]);
-
+  console.log(chats);
   return (
   <div>
-    <h1>Chat Page</h1>
+    <div className="header">
+      <h1>Chat Page</h1>
+      <button onClick={() => {
+        localStorage.removeItem('username');
+        window.location.reload();
+      }}>Logout</button>
+    </div>
     <div className="container">
       <div className="sidebar">
-          <h2>Chats</h2>
           {chats.map((chat) => (
-            <a href={`/chat/${chat.chat_id}`}>{chat.chat_id}</a>
+              <button key={chat} onClick={() => navigate(`/chat/${chat}`)}>
+                  {chat.substring(0,7)}
+              </button>
           ))}
       </div>
       <div className='main-content'>
