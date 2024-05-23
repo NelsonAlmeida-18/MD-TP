@@ -1,6 +1,7 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './Chat.css';
+import './iMessage.css';
 
 function Chat() {
   const {chat_id } = useParams();
@@ -51,51 +52,35 @@ function Chat() {
     }
   }
 
-  const messagesEndRef = useRef(null);
-
-
-  // const scrollToBottom = () => {
-  //   messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  // }
-
-  // useEffect(scrollToBottom, [data]);
-  // console.log(chats);
   return (
-  <div>
-    <div className="header">
-      <h1>Chat Page</h1>
-      <button onClick={() => {
+  <div className="Chat_page">
+    <div className='Chats_1'>Chats</div>
+    <div className='Logout' onClick={() => {
         localStorage.removeItem('username');
         window.location.reload();
-      }}>Logout</button>
+      }}><p className='Logout_text'>Logout</p></div>
+    <div className='Rectangle_1'></div>
+    <div className='Rectangle_6'></div>
+    <div className='Rectangle_7'></div>
+    <input type="text"  className="Rectangle_8" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={handleKeyDown} />
+    <div className='Rectangle_11'>
+      {chats.map((chat) => (
+            <div className='Chats_list' key={chat} onClick={() => {
+              navigate(`/chat/${chat}`)}}>
+                {chat.substring(0,7)}
+            </div>
+      ))}
     </div>
-    <div className="container">
-      <div className="sidebar">
-          {chats.map((chat) => (
-              <button key={chat} onClick={() => navigate(`/chat/${chat}`)}>
-                  {chat.substring(0,7)}
-              </button>
-          ))}
-      </div>
-      <div className='main-content'>
-        <div className="chat-messages">
-          {data.map((message, index) => (
-            <p key={index} className={`message ${message.type}`}>
-              {message.question}{message.answer}
-              <br />
-              {message.source && <span> Source: {message.source}</span>}
-            </p>
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
-        <div className='input-bar'>
-          <input type="text"  className="input-bar" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={handleKeyDown} />
-          <button className="send-button" onClick={handleSend}>
-              <span className="material-icons">send</span>
-          </button>
-        </div>
-      </div>
+    <div className='Rectangle_12'>
+      {data.map((message, index) => (
+        <p key={index} className={message.type === 'sent' ? 'from-me' : 'from-them'}>
+          {message.question}{message.answer}
+          <br />
+          {message.source && <span> Source: {message.source}</span>}
+        </p>
+      ))}
     </div>
+    <div className='Polygon_1' onClick={handleSend}></div>
   </div>
   );
 }

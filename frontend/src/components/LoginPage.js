@@ -1,22 +1,40 @@
 import React, { useState } from 'react';
 import './LoginPage.css';
+import { useNavigate } from 'react-router-dom';
 
 function Login() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
 
+    const navigate = useNavigate();
     const handleLogin = async () => {
-        const response = await fetch('https://localhost:8000/login', {
+        console.log(username, password)
+        fetch('http://localhost:8000/login', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ username, password }),
-        });
-
-        const data = await response.json();
-        console.log(data); // handle response
+            body: JSON.stringify({ "id": username, "password": password }),
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data) {
+                    localStorage.setItem('username', username);
+                    navigate(data.redirect);
+                }
+                else{
+                    alert("Invalid username or password");
+                    setPassword('');
+                    setUsername('');
+                }
+            });
     };
+
+    const handleKeyDown = (event) => {
+        if(event.key === 'Enter'){
+            handleLogin();
+        }
+    }
 
     return (
         <div className="mainDiv">
@@ -27,7 +45,8 @@ function Login() {
                     placeholder="Username"
                     className="username"
                     value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    onChange={(e) => {
+                        setUsername(e.target.value)}}
                 />
                 <input
                     type="password"
