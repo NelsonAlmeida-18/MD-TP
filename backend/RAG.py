@@ -23,7 +23,9 @@ from ragas.embeddings import HuggingfaceEmbeddings
 from ragas.metrics import(
     answer_relevancy,
     answer_correctness,
-    faithfulness
+    faithfulness,
+    context_precision,
+    context_recall
 )
 
 #Database
@@ -61,11 +63,8 @@ class TogetherModel():
 class RAG():
     def __init__(self):
         load_dotenv()
-        # TODO: Usar o ficheiro parties.json para fazer o mapeamento entre partidos e siglas e outras informações caso seja necessário
         partiesFile = open("data/parties.json")
         self.partiesFile = json.load(partiesFile)
-        status = os.system("export TOKENIZERS_PARALLELISM=true")
-        print("Status", status)
         # Load the models and the database controller
         self.llm = self.loadModel()
         self.embedingModel = self.loadEmbeddingModel()
@@ -159,20 +158,31 @@ class RAG():
             # TODO: Fazer a query diferente para um único partido como filtro e múltiplos, o one shot learning fica diferente
             # TODO: Analisar o tamanho do contexto e ver se é necessário fazer a query de outra forma tipo sumarizar
             # Ou uma para cada partido e depois juntar tudo
-            query = f"""
-                        És um assistente para responder a questões sobre o plano eleitoral para 2024.
-                        Dá me a resposta à seguinte questão em Português de Portugal!\n
-                        Caso não tenhas a certeza das respostas diz que não sabes.\n
-                        Com base única e exclusivamente no seguinte contexto do plano eleitoral para 2024.
-                        Contexto: {[f"O partido {party} diz o seguinte: {contextAdd}" for party, (contextAdd, _) in results.items()]}
-                        
-                        Pergunta: {query}
-                    """
+            modelQuery = f"""
+                És um assistente especializado em responder a questões sobre o plano eleitoral para 2024.
+                A TUA RESPOSTA TEM DE SER EM PORTUGUÊS DE PORTUGAL!
+
+                Se não souberes a resposta, deves dizer que não sabes.
+
+                Baseia-te única e exclusivamente no seguinte contexto do plano eleitoral para 2024:
+                Contexto: {[f"O partido {party} diz o seguinte: {contextAdd}" for party, (contextAdd, _) in results.items()]}
+
+                Questão: {query}
+
+                Lembra-te, a resposta deve ser sempre em Português de Portugal!
+
+                Agora, com base no contexto fornecido, responde à seguinte questão:
+            """
+
             
             # print("Querying with query: ",query)
             # response = self.llm.complete(query)
-            response = self.llm.complete(query)
+            response = self.llm.complete(modelQuery)
 
+            # if len(response)<300:
+            #     return self.query(query, evaluate)
+
+        
             # Lets log the query and the response to a file
             date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
             filename = f"query_{date}.json"
@@ -216,13 +226,19 @@ class RAG():
 
 
     def process(self, text):
+            try:
                 doc = self.nlp(text)
                 sents = list(doc.sents)
+                # Todo rever isto
                 vecs = np.stack([sent.vector / sent.vector_norm for sent in sents])
 
                 return sents, vecs
+            except Exception as e:
+                print("Error processing text", e)
+                return [], []
     
     def cluster_text(self,sents, vecs, threshold):
+
         clusters = [[0]]
         for i in range(1, len(sents)):
             if np.dot(vecs[i], vecs[i-1]) < threshold:
@@ -236,7 +252,8 @@ class RAG():
         try:
                         
             # Load the Spacy model
-            self.nlp = spacy.load('pt_core_news_lg')
+            # TODO: altered this to the small in order to consume less ram
+            self.nlp = spacy.load('pt_core_news_sm')
 
             # Initialize the clusters lengths list and final texts list
             clusters_lens = []
@@ -285,17 +302,20 @@ class RAG():
         
         except Exception as e:
             print("Error chunking file", e)
+            return []
         pass
 
 
+    # TODO: Too much data is being loaded into the ram, find a way to bypass this
     def loadData(self):
         try:
             print("Load Data")
-
+            np.seterr(divide='ignore', invalid='ignore')
             #Lets load the data
-            docs = []
+            
             i=0
             for party in os.listdir("data"):
+                docs = []
                 if not os.path.isdir(f"data/{party}"):
                     continue
 
@@ -311,7 +331,7 @@ class RAG():
                     data = data.readlines()
                     data = "\n".join(data)
 
-                    chunkedData = self.chunkFile(file=data, tokensPerChunk=2000, overlap=50)
+                    chunkedData = self.chunkFile(file=data, tokensPerChunk=3000, overlap=50)
                     
                     # In the chunker limit the chunking token size to the number of tokens that the embeder can process
                     cleanName = docName.replace(" ", "_").replace(":", "_").replace("?", "_").replace("!", "_").replace("(", "_").replace(")", "_").replace(",", "_").replace(".", "_")
@@ -322,7 +342,7 @@ class RAG():
                     
 
                         nodeEmbeding = self.generateEmbeddings(text_chunk)
-                        time.sleep(0.2)
+                        time.sleep(0.5)
                         # print(f"Embeding size: {len(nodeEmbeding)}")
 
                         # TODO: Convém indexar o link do documento original para meter nos metadados
@@ -345,6 +365,7 @@ class RAG():
                         i+=1
                 
                 print(f"Loaded {len(docs)} documents into {party}")
+
             print("Data loaded")
 
         except Exception as e:
@@ -385,8 +406,14 @@ class RAG():
             )
 
 
+            # Context precision is a metric between the question and the contexts
+            # Context Recall is between groundtruth and the contexts
+            # Faithfulness is between the question, contexts and the answer
+            # Relevancy is between the answer and the question
+
             metrics = [
-                # context_precision,
+                context_precision,
+                context_recall,
                 answer_relevancy,
                 answer_correctness,
                 faithfulness
@@ -395,8 +422,6 @@ class RAG():
             evaluationResults = []
 
             
-
-
             for test in testset:
                 name = test["name"]
                 question = test["question"]
@@ -460,6 +485,14 @@ class RAG():
                 answer_faithfulness_result = results["faithfulness"].iloc[0]
                 if np.isnan(answer_faithfulness_result):
                     answer_faithfulness_result = 0
+                
+                # 
+                context_precision_result = results["context_precision"].iloc[0]
+                if np.isnan(context_precision_result):
+                    context_precision_result = 0
+                context_recall_result = results["context_recall"].iloc[0]
+                if np.isnan(context_recall_result):
+                    context_recall_result = 0
 
                 with open(f"evaluation/{filename}", "w") as outfile:
                     payload = {
@@ -469,7 +502,9 @@ class RAG():
                         "evaluation": {
                             "answer_relevancy": float(answer_relevancy_result),
                             "answer_correctness": float(answer_correctness_result),
-                            "answer_faithfulness": float(answer_faithfulness_result)
+                            "answer_faithfulness": float(answer_faithfulness_result),
+                            "context_precision": float(context_precision_result),
+                            "context_recall": float(context_recall_result)
                         },
                         "groundTruth": groundTruth,
                         "ourAnswer": ourAnswer,

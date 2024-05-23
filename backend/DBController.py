@@ -183,7 +183,7 @@ class DBController():
                 # print("Text", text)
                 # print("Original ID", originalId)
                 # TODO: Retrieve the party that has the information in order to enhance the answer
-            
+                
                 try:
             
                     metadata = text["matches"][0]["metadata"]

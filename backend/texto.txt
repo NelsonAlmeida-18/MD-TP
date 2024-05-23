@@ -1,0 +1,15 @@
+🚀 In the past days, from April 5th to 7th, at Altice Forum Braga, my team and I embarked on an exciting journey to create something truly revolutionary – LegislAI!
+
+LegislAI is an app we've developed to revolutionize access to Portuguese legislation. Our aim? To empower both the general public and legal professionals with swift, concise, and reliable information on legal matters.
+
+📱 To achieve this, we leveraged a pre-trained Language Model in a Retrieval-Augmented Generation (RAG) architecture to provide the most comprehensive legal insights at your fingertips.
+
+🔧 The journey wasn't without its challenges. Venturing into the realm of RAG app development was a bold adventure, one we hadn't undertaken before. 
+
+Despite the uncertainties, we embraced the challenges head-on and crafted a solution that ultimately earned us the coveted first place.
+
+🤗 I'm genuinely grateful to the organizers for orchestrating such an enriching experience filled with challenges and memorable moments.
+
+Looking ahead, we're eager to delve deeper into Portuguese law and explore ways to enhance and validate our solution further. If you're passionate about contributing to this transformative project, please don't hesitate to reach out.
+
+LegislAI is just getting started, and there's so much more to come. Stay tuned for updates as we continue to develop and refine our platform. Exciting times ahead! #LegislAI #LegalTech #Hackathon #PortugueseLaw #Innovation
