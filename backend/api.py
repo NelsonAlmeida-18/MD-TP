@@ -55,7 +55,7 @@ def register():
 def login():
     """Login a user to the system"""
     user = request.json
-
+    print(user)
     if user['id'] not in users or users[user['id']] != user['password']:
         return jsonify({"error": "Invalid credentials"}), 404
     

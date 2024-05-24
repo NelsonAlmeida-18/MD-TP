@@ -1,8 +1,8 @@
 .Chat_page{
 
-position: relative;
-width: 1512px;
-height: 982px;
+width: 100vw;
+height: 100vh;
+
 
 background: #FFFFFF;
 }
@@ -10,8 +10,8 @@ background: #FFFFFF;
 .Rectangle_1{
 
 position: absolute;
-width: 1512px;
-height: 982px;
+width: 100vw;
+height: 100vh;
 left: 0px;
 top: 0px;
 
@@ -116,22 +116,23 @@ box-shadow: -5px 7px 4px rgba(0, 0, 0, 0.25);
 border-radius: 40px;
 }
 
-.Polygon_1{
+.Polygon_1 {
+  box-sizing: border-box;
+  margin-top: 20px;
 
-box-sizing: border-box;
-margin-top: 20px;
+  position: absolute;
+  width: 0;
+  height: 0;
+  left: 1393px;
+  top: 842px;
 
-position: absolute;
-width: 73px;
-height: 68px;
-left: 1393px;
-top: 842px;
-
-background: #D9D9D9;
-border: 1px solid #000000;
-box-shadow: -5px 5px 4px rgba(0, 0, 0, 0.25);
-transform: rotate(90deg);
+  border-left: 36.5px solid transparent; /* Half of 73px for even triangle sides */
+  border-right: 36.5px solid transparent; /* Half of 73px for even triangle sides */
+  border-bottom: 68px solid #D9D9D9; /* Height of the triangle */
+  /* box-shadow: -5px 5px 4px rgba(0, 0, 0, 0.25); */
+  transform: rotate(90deg);
 }
+
 
 .Rectangle_11{
 

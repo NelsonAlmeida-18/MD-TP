@@ -9,6 +9,7 @@ function Chat() {
   const [data, setData] = useState([]);
   const [chats, setChats] = useState([]);
   const [inputValue, setInputValue] = useState("");
+  
   const navigate = useNavigate();
   useEffect(() => {
     if (!user_id) {
@@ -29,7 +30,9 @@ function Chat() {
       return;
     }
     const new_question = { question: inputValue, type: 'sent' };
-    setData([...data, new_question]);
+    const wait = { question: '...', type: 'received'}
+    setData([...data, new_question, wait]);
+    setInputValue('');
     fetch('http://localhost:8000/query', {
       method: 'POST',
       headers: {

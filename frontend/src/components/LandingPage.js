@@ -1,8 +1,15 @@
 import React from 'react';
 import logo from "../imgs/politaiLogo.png"
 import './LandingPage.css'
+import {useNavigate} from 'react-router-dom';
+
 
 function LandingPage(){
+    const navigate = useNavigate();
+    const handleSubmit= () =>{
+        console.log("Redirecting");
+        navigate("/login")
+    };
     return(
         <div className="mainDiv">
             <div className="leftMember">
@@ -11,10 +18,11 @@ function LandingPage(){
                     eleitorais dos partidos 
                     portugueses nunca foi tão fácil...
                 </p>
-                <button className="launchapp" onClick={() => console.log("Clicked")}>Experimente Já</button>
+                <button className="launchapp" onClick={handleSubmit}>Experimente Já</button>
             </div>
-
-            <img src={logo} alt='PolitAI logo' className="rightMember" />
+            <div className='rightMember'>
+                <img src={logo} alt='PolitAI logo' className="logo" />
+            </div>
 
         </div>
     )

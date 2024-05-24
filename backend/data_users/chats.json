@@ -2,55 +2,14 @@
     "henrique": {
         "1": [
             {
-                "question": "Olá, tudo bem?",
-                "type": "sent"
-            },
-            {
-                "answer": "Tudo ótimo, e você?",
-                "source": "fonte",
-                "type": "received"
-            },
-            {
-                "question": "Olá, tudo bem?",
-                "type": "sent"
-            },
-            {
-                "answer": "Tudo ótimo, e você?",
-                "source": "fonte",
-                "type": "received"
-            },
-            {
-                "question": "Olá, tudo bem?",
-                "type": "sent"
-            },
-            {
-                "answer": "Tudo ótimo, e você?",
-                "source": "fonte",
-                "type": "received"
-            },
-            {
-                "question": "Olá, tudo bem?",
-                "type": "sent"
-            },
-            {
-                "answer": "Tudo ótimo, e você?",
-                "source": "fonte",
-                "type": "received"
-            },
-            {
-                "question": "Olá, tudo bem?",
-                "type": "sent"
-            },
-            {
-                "answer": "Tudo ótimo, e você?",
-                "source": "fonte",
+                "question": "Saudações, sou o seu assistente virtual.\n Questione-me acerca dos planos eleitorais dos partidos e terei todo o gosto em responder...",
                 "type": "received"
             }
         ],
         "2": [
             {
-                "question": "Olá, tudo bem?",
-                "type": "sent"
+                "question": "Saudações, sou o seu assistente virtual.\n Questione-me acerca dos planos eleitorais dos partidos e terei todo o gosto em responder...",
+                "type": "received"
             }
         ]
     },
