@@ -1,0 +1,59 @@
+{
+    "partidos": {
+            "AD": {
+                "siglas" : [
+                    "ad",
+                    "aliança democrática",
+                    "alianca democratica",
+                    "aliança democratica",
+                    "alianca democrática"
+                ],
+                "nome": "Aliança Democrática",
+                "espetro": "Centro-Direita",
+                "source": "https://ad2024.pt/programa-eleitoral"
+            },
+            "PS": {
+                "siglas" : [
+                    "ps",
+                    "partido socialista"
+                ],
+                "nome": "Partido Socialista",
+                "espetro": "Centro-Esquerda",
+                "source": "https://www.ps.pt/programa-eleitoral-2023/"
+            },
+            "PSD": {
+                "siglas" : [
+                    "psd",
+                    "partido social democrata"
+                ],
+                "nome": "Partido Social Democrata",
+                "espetro": "Centro-Direita"
+            },
+            "BE": {
+                "siglas" : [
+                    "be",
+                    "bloco de esquerda"
+                ],
+                "nome": "Bloco de Esquerda",
+                "espetro": "Esquerda",
+                "source": "https://programa2022.bloco.org/"
+            },
+            "PCP": {
+                "siglas" : [
+                    "pcp",
+                    "partido comunista português"
+                ],
+                "nome": "Partido Comunista Português",
+                "espetro": "Esquerda",
+                "source": "https://www.pcp.pt/programa-eleitoral"
+            },
+            "Chega": {
+                "siglas" : [
+                    "chega"
+                ],
+                "nome": "Chega",
+                "espetro": "Direita",
+                "source": "https://partidochega.pt/index.php/2024legislativas_programa/"
+            }
+        }
+}
