@@ -1,6 +1,5 @@
 from pinecone import Pinecone, PodSpec
 
-from llama_index.vector_stores.pinecone import PineconeVectorStore
 
 
 from dotenv import load_dotenv
@@ -12,7 +11,7 @@ import datetime
 
 class DBController():
 
-    def __init__(self, modelContextWindow, embeddingSize=384):
+    def __init__(self, modelContextWindow=1024, embeddingSize=384):
         #Lets verify if the database is up and running
         load_dotenv()
         self.db = self.initDatabase()
@@ -55,7 +54,7 @@ class DBController():
                 time.sleep(1)
 
             self.index = self.db.Index(index_name)
-            self.vector_store = PineconeVectorStore(self.index)
+        
             print("Index created")
             return existed
 
