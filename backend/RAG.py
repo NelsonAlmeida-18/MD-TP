@@ -14,17 +14,6 @@ import time
 from llama_index.llms.together import TogetherLLM
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
-from langchain_together import Together
-
-from ragas import evaluate
-from ragas.embeddings import HuggingfaceEmbeddings
-from ragas.metrics import(
-    answer_relevancy,
-    answer_correctness,
-    faithfulness,
-    context_precision,
-    context_recall
-)
 
 #Database
 from DBController import DBController
@@ -33,28 +22,6 @@ import numpy as np
 import spacy
 
 
-class TogetherModel():
-
-    def __init__(self):
-        self.model = TogetherLLM(
-            model="mistralai/Mixtral-8x7B-Instruct-v0.1",
-            api_key = os.getenv("TogetherAI_API_KEY")
-        )
-    
-    def load_model(self):
-        return self.model
-
-    def generate(self, prompt):
-        answer = self.model.complete(prompt)
-        return answer
-    
-    # Todo verify this method
-    async def a_generate(self, prompt):
-        answer = await self.model.complete(prompt)
-        return answer
-    
-    def get_model_name(self):
-        return "MistraLAI Mixtral 8x7B Instruct v0.1"
 
 #TODO Make run requirements and install spacy python3 -m spacy download pt_core_news_sm
 
@@ -75,7 +42,7 @@ class RAG():
         # self.dataIngestion()
 
         # For pipeline evaluation
-        # self.evaluate()
+        self.evaluate()
 
     def partiesInQuery(self, query):
         # Provavelmente adicionar um modelo para verificar a verossimilança entre nomes de partidos
@@ -143,16 +110,6 @@ class RAG():
                 results[party] = ("\n".join(contextAdd), sources)
 
 
-            # If the retrieved context is non existant or the confidence in the answer is too low then 
-            # Dont answer
-            # print("Extra context", extraContext)
-
-            # TODO:Prompt engineering to enhance the response
-            # Vamos usar one shot learning para melhorar a resposta
-            # https://ritikjain51.medium.com/llms-mastering-llm-responses-through-advanced-prompt-engineering-strategies-25c029d504b2
-
-            # Vamos usar https://www.promptingguide.ai/techniques/cot visto que elimina 
-
             # TODO: Fazer a query diferente para um único partido como filtro e múltiplos, o one shot learning fica diferente
             # TODO: Analisar o tamanho do contexto e ver se é necessário fazer a query de outra forma tipo sumarizar
             # Ou uma para cada partido e depois juntar tudo
@@ -212,8 +169,7 @@ class RAG():
         except Exception as e:
             print("Error querying", e)
 
-        
-    # TODO: https://docs.llamaindex.ai/en/latest/examples/low_level/ingestion/
+
     def dataIngestion(self):
         try:
             print("Data Ingestion")
@@ -227,7 +183,6 @@ class RAG():
             try:
                 doc = self.nlp(text)
                 sents = list(doc.sents)
-                # Todo rever isto
                 vecs = np.stack([sent.vector / sent.vector_norm for sent in sents])
 
                 return sents, vecs
@@ -245,12 +200,10 @@ class RAG():
         
         return clusters
 
-    # TODO: Edit this in order to account for overlapping
     def chunkFile(self, file, tokensPerChunk, overlap):
         try:
                         
             # Load the Spacy model
-            # TODO: altered this to the small in order to consume less ram
             self.nlp = spacy.load('pt_core_news_sm')
 
             # Initialize the clusters lengths list and final texts list
@@ -304,7 +257,6 @@ class RAG():
         pass
 
 
-    # TODO: Too much data is being loaded into the ram, find a way to bypass this
     def loadData(self):
         try:
             print("Load Data")
@@ -380,145 +332,6 @@ class RAG():
             print("Error generating embeddings", e)
 
     
-    def evaluate(self, testset={}):
-        print("Evaluating the pipeline")
-        try:
-            # Lets load the jsonfile with the testset
-            if testset == {}:
-                testset = open("tests.json")
-                testset = json.load(testset)
-                testset = testset["tests"]
-
-            results = []
-
-            criticModel = Together(
-                model="mistralai/Mixtral-8x7B-Instruct-v0.1",
-                temperature=0.1,
-                together_api_key = os.getenv("TogetherAI_API_KEY"),
-                max_tokens = 512,
-                # Answer structure
-            )
-
-            embedingModel = HuggingfaceEmbeddings(
-                model_name = "BAAI/bge-small-en"
-            )
-
-
-            # Context precision is a metric between the question and the contexts
-            # Context Recall is between groundtruth and the contexts
-            # Faithfulness is between the question, contexts and the answer
-            # Relevancy is between the answer and the question
-
-            metrics = [
-                context_precision,
-                context_recall,
-                answer_relevancy,
-                answer_correctness,
-                faithfulness
-            ]
-
-            evaluationResults = []
-
-            
-            for test in testset:
-                name = test["name"]
-                question = test["question"]
-                groundTruth = test["groundTruth"]
-
-                answer = self.query(question, evaluate = True)
-                ourAnswer = answer["response"]
-                context = answer["context"]
-                
-                evaluation_template = f"""
-                    Classifica a resposta: "{ourAnswer}" para a pergunta "{question}" dado apenas o contexto fornecido pelo seguinte contexto: {"".join(context)}.
-                    O valor real da pergunta deverá ser "{groundTruth}".
-                    A classificação deve ser entre 1 (pontuação mais baixa) e 10 (pontuação mais alta), e deve conter uma explicação máxima de uma frase da classificação.
-                    A classificação deve ser baseada na relevância da resposta e o quão correta ela está considerando que a resposta foi APENAS baseada no contexto, e nada mais.
-                    A resposta deve ter apenas a classificação do tipo:
-                    Relevancia: x/10
-                    Correção: x/10
-                    """
-
-                modelAnswer = criticModel.invoke(evaluation_template)
-                
-
-                ourAnswer = ourAnswer.replace("\n", " ").replace("Resposta:", "")
-                
-                result = {
-                    "question": question,
-                    "answer": ourAnswer,
-                    "contexts": ["\n".join(context[0:5])],
-                    "ground_truth": groundTruth
-                }
-
-                # Lets create a json file to store the evaluation:
-                date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
-                filename = f"results_{date}.json"
-
-                with open(f"evaluation/{filename}", "w") as outfile:
-                    json.dump(result, outfile)
-
-                result = load_dataset("json", data_files=f"evaluation/{filename}")
-                
-                results = evaluate(
-                    result["train"],
-                    metrics=metrics,
-                    llm = criticModel,
-                    embeddings = embedingModel,
-                    raise_exceptions=False
-                )
-                
-                results = results.to_pandas()
-
-                # Lets overwrite the json file now with the answers from both the critic llm and the RAGAS evaluation
-                # Probably alter the order for better visualization in the file
-
-                # TODO: verify if any of the results are Nan, if so replace by 0 
-                answer_relevancy_result = results["answer_relevancy"].iloc[0]
-                if np.isnan(answer_relevancy_result):
-                    answer_relevancy_result = 0
-                answer_correctness_result = results["answer_correctness"].iloc[0]
-                if np.isnan(answer_correctness_result):
-                    answer_correctness_result = 0
-                answer_faithfulness_result = results["faithfulness"].iloc[0]
-                if np.isnan(answer_faithfulness_result):
-                    answer_faithfulness_result = 0
-                
-                # 
-                context_precision_result = results["context_precision"].iloc[0]
-                if np.isnan(context_precision_result):
-                    context_precision_result = 0
-                context_recall_result = results["context_recall"].iloc[0]
-                if np.isnan(context_recall_result):
-                    context_recall_result = 0
-
-                with open(f"evaluation/{filename}", "w") as outfile:
-                    payload = {
-                        "test_name": name,
-                        "question" : question,
-                        "criticAnswer": modelAnswer,
-                        "evaluation": {
-                            "answer_relevancy": float(answer_relevancy_result),
-                            "answer_correctness": float(answer_correctness_result),
-                            "answer_faithfulness": float(answer_faithfulness_result),
-                            "context_precision": float(context_precision_result),
-                            "context_recall": float(context_recall_result)
-                        },
-                        "groundTruth": groundTruth,
-                        "ourAnswer": ourAnswer,
-                        "context": context
-                    }
-                    json.dump(payload, outfile)
-
-                    evaluationResults.append(payload)
-
-            print("Evaluation done")
-            return {"results" : evaluationResults}
-
-        except Exception as e:
-            print("Error evaluating", e)
-
-
 
     def loadModel(self):
         try: 
@@ -606,3 +419,6 @@ class RAG():
                 option = input("What is the query you want to make?")
             except Exception as e:
                 print("Error testing queries", e)
+
+
+RAG()
