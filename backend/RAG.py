@@ -148,7 +148,7 @@ class RAG():
                             f"{party}" : f"{contextAdd}" for party, (contextAdd, _) in results.items()
                         }
                      ]}, 
-                     outfile)
+                     outfile).encode('utf-8')
 
             if not evaluate:
                 return {

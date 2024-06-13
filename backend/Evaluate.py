@@ -72,7 +72,7 @@ class Evaluate():
         # self.dataIngestion()
 
         #self.generateSyntheticDataset()
-        self.evaluate("synthetic_testset_2024-06-13_17-44.json")
+        self.evaluate("synthetic_testset_2024-06-06_08-56.json")
         #self.evaluate()
         #resultsFile = open("evaluation/results_2024-06-13_16-49.json")
         #evaluationResults = json.load(resultsFile)
@@ -185,7 +185,7 @@ class Evaluate():
                             f"{party}" : f"{contextAdd}" for party, (contextAdd, _) in results.items()
                         }
                      ]}, 
-                     outfile)
+                     outfile).encode("utf-8")
 
             if not evaluate:
                 return {
@@ -424,7 +424,7 @@ class Evaluate():
 
                     testNum+=1
 
-            json.dump(payload, outfile)
+            json.dump(payload, outfile).encode("utf-8")
 
         print("Synthetic data generated")
 
@@ -482,8 +482,8 @@ class Evaluate():
 
             savePath = f"evaluation/{evaluationName}"
 
-            with open(f"{savePath}_results.json", "w") as outfile:
-                json.dump(evaluationResults, outfile)
+            with open(f"{savePath}/{evaluationName}_results.json", "w") as outfile:
+                json.dump(evaluationResults, outfile).encode("utf-8")
 
             # Lets plot the evaluation results
             avgContextPrecision = 0
@@ -578,7 +578,7 @@ class Evaluate():
 
                 # Lets save the results file to the folder
                 with open(f"{dirName}/results.json", "w") as outfile:
-                    json.dump(result, outfile)
+                    json.dump(result, outfile).encode("utf-8")
 
             # Lets plot the average results
             plt.figure()
@@ -723,7 +723,7 @@ class Evaluate():
                 filename = f"results_{date}_{testName}"
 
                 with open(f"evaluation/{filename}.json", "w") as outfile:
-                    json.dump(result, outfile)
+                    json.dump(result, outfile).encode("utf-8")
 
                 result = load_dataset("json", data_files=f"evaluation/{filename}.json")
 

@@ -236,7 +236,7 @@ class DBController():
             # date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             # self.compareDocs(rerankedDocs, docs, f"./output_{date}.txt")  
             
-            return docs
+            return rerankedDocs
 
         except Exception as e:
             print("Error querying the database", e)
