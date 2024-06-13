@@ -170,8 +170,9 @@ class DBController():
                     
             # Original version
             docs = {}
-            for result in results:
-            
+            for result in range(min(len(results),5)):
+                result = results[result]
+
                 originalId = result["id"]
                 
                 text = self.index.query(
@@ -235,7 +236,7 @@ class DBController():
             # date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             # self.compareDocs(rerankedDocs, docs, f"./output_{date}.txt")  
             
-            return rerankedDocs
+            return docs
 
         except Exception as e:
             print("Error querying the database", e)
