@@ -66,8 +66,8 @@ class Evaluate():
         self.embedingModel = self.loadEmbeddingModel()
         self.DBController = DBController()
 
-        #self.generateSyntheticDataset()
-        #self.evaluate("synthetic_testset_2024-06-06_08-56.json")
+        # self.generateSyntheticDataset()
+        # self.evaluate("synthetic_testset_2024-06-06_08-56.json")
         self.rerankervstopk()
 
 
@@ -169,7 +169,8 @@ class Evaluate():
             #It should also mention the number of tests ran for each of the methods
 
             #Side by side comparison
-            plt.figure()
+            plt.figure(figsize=(50, 6))
+            plt.tight_layout()
             
             rerankerNumTests = rerankerResults["numTests"]
             topkNumTests = topkResults["numTests"]
@@ -177,40 +178,43 @@ class Evaluate():
             rerankerScores = [rerankerResults["Ragas_Context_Precision"]/rerankerNumTests, rerankerResults["Ragas_Context_Recall"]/rerankerNumTests, rerankerResults["Ragas_Answer_Relevancy"]/rerankerNumTests, rerankerResults["Ragas_Answer_Correctness"]/rerankerNumTests, rerankerResults["Ragas_Faithfulness"]/rerankerNumTests]
             topkScores = [topkResults["Ragas_Context_Precision"]/topkNumTests, topkResults["Ragas_Context_Recall"]/topkNumTests, topkResults["Ragas_Answer_Relevancy"]/topkNumTests, topkResults["Ragas_Answer_Correctness"]/topkNumTests, topkResults["Ragas_Faithfulness"]/topkNumTests]
             x = np.arange(len(metrics))
-            width = 0.35
+            width = 0.45
 
-            fig, ax = plt.subplots()
+            _, ax = plt.subplots()
             ax.bar(x - width/2, rerankerScores, width, label='Reranker')
             ax.bar(x + width/2, topkScores, width, label='TopK')
 
             ax.set_ylabel('Scores')
             ax.set_title('Scores by metric and method')
             ax.set_xticks(x)
+            plt.xticks(fontsize=7)
             ax.set_xticklabels(metrics)
             ax.legend(["Reranker", "TopK"])
 
-            plt.savefig(f"evaluation/ragas_reranker_vs_topk_{date}.png")
+            plt.savefig(f"evaluation/ragas_reranker_vs_topk_{date}.png", dpi=600)
             plt.clf()
 
             #Plot the critic model results
-            plt.figure()
+            plt.figure(figsize=(50, 6))
+            plt.tight_layout()
             metrics = ["Context Precision", "Context Recall", "Answer Relevancy", "Answer Correctness"]
             rerankerScores = [rerankerResults["Critic_Context_Precision"]/rerankerNumTests, rerankerResults["Critic_Context_Recall"]/rerankerNumTests, rerankerResults["Critic_Answer_Relevancy"]/rerankerNumTests, rerankerResults["Critic_Answer_Correctness"]/rerankerNumTests]
             topkScores = [topkResults["Critic_Context_Precision"]/topkNumTests, topkResults["Critic_Context_Recall"]/topkNumTests, topkResults["Critic_Answer_Relevancy"]/topkNumTests, topkResults["Critic_Answer_Correctness"]/topkNumTests]
             x = np.arange(len(metrics))
-            width = 0.35
+            width = 0.45
 
-            fig, ax = plt.subplots()
+            _, ax = plt.subplots()
             ax.bar(x - width/2, rerankerScores, width, label='Reranker')
             ax.bar(x + width/2, topkScores, width, label='TopK')
 
             ax.set_ylabel('Scores')
             ax.set_title('Scores by metric and method')
             ax.set_xticks(x)
+            plt.xticks(fontsize=7)
             ax.set_xticklabels(metrics)
             ax.legend(["Reranker", "TopK"])
 
-            plt.savefig(f"evaluation/critic_reranker_vs_topk_critic_{date}.png")
+            plt.savefig(f"evaluation/critic_reranker_vs_topk_{date}.png", dpi=600)
             plt.clf()
 
             print("Reranker vs TopK plotted")
