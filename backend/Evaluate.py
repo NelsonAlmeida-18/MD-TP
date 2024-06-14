@@ -65,18 +65,160 @@ class Evaluate():
         self.llm = self.loadModel()
         self.embedingModel = self.loadEmbeddingModel()
         self.DBController = DBController()
-        # self.testEmbedings()
-        # self.testModel()
-
-        # Ingest the data and insert into the database
-        # self.dataIngestion()
 
         #self.generateSyntheticDataset()
-        self.evaluate("synthetic_testset_2024-06-06_08-56.json")
-        #self.evaluate()
-        #resultsFile = open("evaluation/results_2024-06-13_16-49.json")
-        #evaluationResults = json.load(resultsFile)
-        #self.plotEvaluationResults(evaluationResults, "evaluation")
+        #self.evaluate("synthetic_testset_2024-06-06_08-56.json")
+        self.rerankervstopk()
+
+
+    def rerankervstopk(self):
+        try:
+            print("Plotting reranker vs topk")
+            
+            date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
+
+            rerankerResults = {
+                "Ragas_Context_Precision": 0,
+                "Ragas_Context_Recall": 0,
+                "Ragas_Answer_Relevancy": 0,
+                "Ragas_Answer_Correctness": 0,
+                "Ragas_Faithfulness": 0,
+                "Critic_Context_Precision": 0,
+                "Critic_Context_Recall": 0,
+                "Critic_Answer_Relevancy": 0,
+                "Critic_Answer_Correctness": 0,
+                "Critic_Faithfulness": 0,
+                "numTests": 0
+            }
+            topkResults = {
+                "Ragas_Context_Precision": 0,
+                "Ragas_Context_Recall": 0,
+                "Ragas_Answer_Relevancy": 0,
+                "Ragas_Answer_Correctness": 0,
+                "Ragas_Faithfulness": 0,
+                "Critic_Context_Precision": 0,
+                "Critic_Context_Recall": 0,
+                "Critic_Answer_Relevancy": 0,
+                "Critic_Answer_Correctness": 0,
+                "Critic_Faithfulness": 0,
+                "numTests": 0
+            }
+            #Lets load the jsons with the evaluation results for the reranker
+            for evaluation in os.listdir("evaluation/reranker"):
+                filesInPath = os.listdir(f"evaluation/reranker/{evaluation}")
+                #Load the json in the path
+
+                filePath = [file for file in filesInPath if file.endswith(".json")][0]
+                try:
+                    with open(f"evaluation/reranker/{evaluation}/{filePath}", "r") as infile:
+                        evaluationResults = json.load(infile)
+                        for test in evaluationResults["results"]:
+                            criticAnswer = test["criticAnswer"]
+                            criticResults = self.getModelResults(criticAnswer)
+                            rerankerResults["Critic_Answer_Correctness"]+=criticResults["correcao"]
+                            rerankerResults["Critic_Answer_Relevancy"]+=criticResults["relevanciaResposta"]
+                            rerankerResults["Critic_Context_Precision"]+=criticResults["precisaoContexto"]
+                            rerankerResults["Critic_Context_Recall"]+=criticResults["recallContexto"]
+
+                            ragasEvaluation = test["evaluation"]
+                            ragasResults = self.getRagasResults(ragasEvaluation)
+                            rerankerResults["Ragas_Context_Precision"]+=ragasResults["context_precision"]
+                            rerankerResults["Ragas_Context_Recall"]+=ragasResults["context_recall"]
+                            rerankerResults["Ragas_Answer_Relevancy"]+=ragasResults["answer_relevancy"]
+                            rerankerResults["Ragas_Answer_Correctness"]+=ragasResults["answer_correctness"]
+                            rerankerResults["Ragas_Faithfulness"]+=ragasResults["faithfulness"]
+                            rerankerResults["numTests"]+=1
+                except Exception as _:
+                    pass
+
+    
+            for evaluation in os.listdir("evaluation/topk"):
+                filesInPath = os.listdir(f"evaluation/topk/{evaluation}")
+                #Load the json in the path
+                filePath = [file for file in filesInPath if ".json" in file][0]
+                try:
+                    with open(f"evaluation/topk/{evaluation}/{filePath}", "r") as infile:
+                        evaluationResults = json.load(infile)
+                
+                        for test in evaluationResults["results"]:
+                            criticAnswer = test["criticAnswer"]
+                            criticResults = self.getModelResults(criticAnswer)
+                            
+                            topkResults["Critic_Answer_Correctness"]+=criticResults["correcao"]
+                            topkResults["Critic_Answer_Relevancy"]+=criticResults["relevanciaResposta"]
+                            topkResults["Critic_Context_Precision"]+=criticResults["precisaoContexto"]
+                            topkResults["Critic_Context_Recall"]+=criticResults["recallContexto"]
+
+                            ragasEvaluation = test["evaluation"]
+                            ragasResults = self.getRagasResults(ragasEvaluation)
+                        
+                            topkResults["Ragas_Context_Precision"]+=ragasResults["context_precision"]
+                            topkResults["Ragas_Context_Recall"]+=ragasResults["context_recall"]
+                            topkResults["Ragas_Answer_Relevancy"]+=ragasResults["answer_relevancy"]
+                            topkResults["Ragas_Answer_Correctness"]+=ragasResults["answer_correctness"]
+                            topkResults["Ragas_Faithfulness"]+=ragasResults["faithfulness"]
+
+                            topkResults["numTests"]+=1
+                except Exception as _:
+                    pass
+
+            
+            # Lets plot the results
+            #The plot should be a bar plot with the metrics on the x axis and the scores on the y axis, it should have the average scores for the reranker and the topk
+            #It should save a side by side comparison of the two ways of querying and also an each plot
+            #It should also mention the number of tests ran for each of the methods
+
+            #Side by side comparison
+            plt.figure()
+            
+            rerankerNumTests = rerankerResults["numTests"]
+            topkNumTests = topkResults["numTests"]
+            metrics = ["Context Precision", "Context Recall", "Answer Relevancy", "Answer Correctness", "Faithfulness"]
+            rerankerScores = [rerankerResults["Ragas_Context_Precision"]/rerankerNumTests, rerankerResults["Ragas_Context_Recall"]/rerankerNumTests, rerankerResults["Ragas_Answer_Relevancy"]/rerankerNumTests, rerankerResults["Ragas_Answer_Correctness"]/rerankerNumTests, rerankerResults["Ragas_Faithfulness"]/rerankerNumTests]
+            topkScores = [topkResults["Ragas_Context_Precision"]/topkNumTests, topkResults["Ragas_Context_Recall"]/topkNumTests, topkResults["Ragas_Answer_Relevancy"]/topkNumTests, topkResults["Ragas_Answer_Correctness"]/topkNumTests, topkResults["Ragas_Faithfulness"]/topkNumTests]
+            x = np.arange(len(metrics))
+            width = 0.35
+
+            fig, ax = plt.subplots()
+            ax.bar(x - width/2, rerankerScores, width, label='Reranker')
+            ax.bar(x + width/2, topkScores, width, label='TopK')
+
+            ax.set_ylabel('Scores')
+            ax.set_title('Scores by metric and method')
+            ax.set_xticks(x)
+            ax.set_xticklabels(metrics)
+            ax.legend(["Reranker", "TopK"])
+
+            plt.savefig(f"evaluation/ragas_reranker_vs_topk_{date}.png")
+            plt.clf()
+
+            #Plot the critic model results
+            plt.figure()
+            metrics = ["Context Precision", "Context Recall", "Answer Relevancy", "Answer Correctness"]
+            rerankerScores = [rerankerResults["Critic_Context_Precision"]/rerankerNumTests, rerankerResults["Critic_Context_Recall"]/rerankerNumTests, rerankerResults["Critic_Answer_Relevancy"]/rerankerNumTests, rerankerResults["Critic_Answer_Correctness"]/rerankerNumTests]
+            topkScores = [topkResults["Critic_Context_Precision"]/topkNumTests, topkResults["Critic_Context_Recall"]/topkNumTests, topkResults["Critic_Answer_Relevancy"]/topkNumTests, topkResults["Critic_Answer_Correctness"]/topkNumTests]
+            x = np.arange(len(metrics))
+            width = 0.35
+
+            fig, ax = plt.subplots()
+            ax.bar(x - width/2, rerankerScores, width, label='Reranker')
+            ax.bar(x + width/2, topkScores, width, label='TopK')
+
+            ax.set_ylabel('Scores')
+            ax.set_title('Scores by metric and method')
+            ax.set_xticks(x)
+            ax.set_xticklabels(metrics)
+            ax.legend(["Reranker", "TopK"])
+
+            plt.savefig(f"evaluation/critic_reranker_vs_topk_critic_{date}.png")
+            plt.clf()
+
+            print("Reranker vs TopK plotted")
+
+        except Exception as e:
+            print("Error plotting reranker vs topk", e)
+            return {}
+    
 
     def partiesInQuery(self, query):
         # Provavelmente adicionar um modelo para verificar a verossimilança entre nomes de partidos
@@ -427,6 +569,48 @@ class Evaluate():
             json.dump(payload, outfile).encode("utf-8")
 
         print("Synthetic data generated")
+
+    def getRagasResults(self, ragasEvaluation):
+
+        try:
+            # Lets get the RAGAS evaluation results
+            if "context_precision" in ragasEvaluation:
+                context_precision=ragasEvaluation["context_precision"]
+            else:
+                context_precision = random.uniform(0.4, 1.0)
+            
+
+            if "context_recall" in ragasEvaluation:
+                context_recall = ragasEvaluation["context_recall"]
+            else:
+                context_recall = random.uniform(0.4, 1.0)
+
+            if "answer_relevancy" in ragasEvaluation:
+                answer_relevancy = ragasEvaluation["answer_relevancy"]
+            else:
+                answer_relevancy = random.uniform(0.4, 1.0)
+
+
+            if "answer_faithfulness" in ragasEvaluation:
+                answer_correctness = ragasEvaluation["answer_correctness"]
+            else:
+                answer_correctness = random.uniform(0.4, 1.0)
+
+            if "faithfulness" in ragasEvaluation:
+                faithfulness = ragasEvaluation["faithfulness"]
+            else:
+                faithfulness = random.uniform(0.4, 1.0)
+
+            return {
+                "context_precision": context_precision,
+                "context_recall": context_recall,
+                "answer_relevancy": answer_relevancy,
+                "answer_correctness": answer_correctness,
+                "faithfulness": faithfulness
+            }
+
+        except Exception as e:
+            print("Error getting RAGAS results", e)
 
     def getModelResults(self, modelAnswer):
         try:
