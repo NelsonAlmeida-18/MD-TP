@@ -4,8 +4,8 @@ Um chatbot que responde a perguntas sobre os partidos políticos portugueses ten
 ## Estrutura do Repositório
 - **article**: Contém o artigo final do projeto;
 - **backend**: Contém o código do backend do chatbot. Para correr o backend, basta correr o comando `python app.py` dentro desta pasta. Alé, disso, esta pasta contém os dados de cada chat, users, testes realizados à pipeline e os dados dos partidos políticos;
-- **frontend**: Contém o código do frontend do chatbot. Para correr o frontend, é necessário ter o Node.js instalado. Para instalar as dependências, correr o comando `npm install` e para correr o frontend, correr o comando `npm start` dentro desta pasta;~
-- **presentation**: Contém a apresentação final do projeto;
+- **frontend**: Contém o código do frontend do chatbot. Para correr o frontend, é necessário ter o Node.js instalado. Para instalar as dependências, correr o comando `npm install` e para correr o frontend, correr o comando `npm start` dentro desta pasta;
+- **presentation**: Contém a apresentação final do projeto.
 
 ## Autores
 - Ana Rita Poças, pg53645
