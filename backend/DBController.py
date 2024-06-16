@@ -170,8 +170,9 @@ class DBController():
                     
             # Original version
             docs = {}
-            for result in results:
-            
+            for result in range(min(len(results),5)):
+                result = results[result]
+
                 originalId = result["id"]
                 
                 text = self.index.query(

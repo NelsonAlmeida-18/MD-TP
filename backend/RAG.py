@@ -41,9 +41,6 @@ class RAG():
         # Ingest the data and insert into the database
         # self.dataIngestion()
 
-        # For pipeline evaluation
-        self.evaluate()
-
     def partiesInQuery(self, query):
         # Provavelmente adicionar um modelo para verificar a verossimilança entre nomes de partidos
 
@@ -151,7 +148,7 @@ class RAG():
                             f"{party}" : f"{contextAdd}" for party, (contextAdd, _) in results.items()
                         }
                      ]}, 
-                     outfile)
+                     outfile).encode('utf-8')
 
             if not evaluate:
                 return {
