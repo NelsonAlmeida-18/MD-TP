@@ -1,25 +1,18 @@
 {
     "henrique": {
-        "1": [
+        "f1b3b3b4-1b3b-4b3b-8b3b-3b3b3b3b3b3b": [
             {
                 "question": "Saudações, sou o seu assistente virtual.\n Questione-me acerca dos planos eleitorais dos partidos e terei todo o gosto em responder...",
                 "type": "received"
-            }
-        ],
-        "2": [
+            },
             {
-                "question": "Saudações, sou o seu assistente virtual.\n Questione-me acerca dos planos eleitorais dos partidos e terei todo o gosto em responder...",
+                "question": "Como pretende a AD combater a corrupção?",
+                "type": "sent"
+            },
+            {
+                "question": "A forma como o partido AD pretende combater a corrupção é através de três métodos principais. Primeiro, propõem aumentar a eficácia e a celeridade da investigação e punição de crimes de corrupção, o que será alcançado pela criminalização do enriquecimento ilícito, reforma dos mecanismos institucionais e processuais de combate à corrupção, e proteção de denunciantes e vítimas. Em segundo lugar, buscam aumentar a integridade e transparência da governação pública e reconstruir uma cultura de responsabilidade política, através da regulamentação do lobbying, redução de conflitos de interesse, e melhoria dos sistemas de declaração de rendimentos, património e interesses. Por último, têm como meta melhorar a posição de Portugal no Índice de Perceção da Corrupção.",
                 "type": "received"
             }
         ]
-    },
-    "henriques": {
-        "7455014e-e3ff-41c9-a712-63c6ccf5b0a9": []
-    },
-    "henriquess": {
-        "67592803-2f8b-4ae9-b8ef-2faaf74f174d": []
-    },
-    "henriquessas": {
-        "ab88db04-173f-4932-8ce7-53247116c588": []
     }
 }
